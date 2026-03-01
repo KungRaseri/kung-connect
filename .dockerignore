@@ -1,0 +1,25 @@
+# Build artifacts — exclude recursively so Windows obj/ files never enter the
+# Linux build context (they contain Windows-only NuGet fallback folder paths)
+**/bin/
+**/obj/
+**/publish/
+**/out/
+
+# Git / IDE
+.git/
+.vs/
+.idea/
+*.user
+*.suo
+
+# Secrets — never send to Docker build context
+.env
+**/.env
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+
+# macOS
+.DS_Store

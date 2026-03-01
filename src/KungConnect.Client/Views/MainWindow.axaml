@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:KungConnect.Client.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="750"
+        x:Class="KungConnect.Client.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="KungConnect"
+        Width="1200" Height="750"
+        MinWidth="800" MinHeight="500">
+
+    <!-- The ViewLocator (registered as a DataTemplate in App.axaml)
+         maps each ViewModel type to its matching View automatically. -->
+    <ContentControl Content="{Binding CurrentPage}"/>
+
+</Window>

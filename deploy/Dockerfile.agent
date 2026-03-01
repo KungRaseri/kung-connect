@@ -1,0 +1,27 @@
+# ── KungConnect Agent ─────────────────────────────────────────────────────────
+# Note: this container is for demo/CI use. In production the agent runs natively
+# on the target machine (Windows, macOS, or Linux) for full input injection.
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Layer 1: project files for restore cache
+COPY src/KungConnect.Shared/KungConnect.Shared.csproj src/KungConnect.Shared/
+COPY src/KungConnect.Agent/KungConnect.Agent.csproj   src/KungConnect.Agent/
+
+RUN dotnet restore src/KungConnect.Agent/KungConnect.Agent.csproj
+
+# Layer 2: source files
+COPY src/KungConnect.Shared/ src/KungConnect.Shared/
+COPY src/KungConnect.Agent/  src/KungConnect.Agent/
+
+RUN dotnet publish src/KungConnect.Agent/KungConnect.Agent.csproj \
+      -c Release -o /app/publish --no-restore
+
+# ── Runtime image ─────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS runtime
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+ENTRYPOINT ["dotnet", "KungConnect.Agent.dll"]

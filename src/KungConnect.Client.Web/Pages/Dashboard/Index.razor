@@ -1,0 +1,132 @@
+@page "/dashboard"
+@layout DashboardLayout
+@inject AuthService Auth
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>KungConnect — Machines</PageTitle>
+
+<div class="dash-page">
+    <div class="dash-page-header">
+        <h2>Machines</h2>
+        <button class="btn-primary" @onclick='() => Nav.NavigateTo("/dashboard/adhoc")'>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:1rem;height:1rem">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Ad Hoc Session
+        </button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="dash-empty">Loading machines…</div>
+    }
+    else if (_machines.Count == 0)
+    {
+        <div class="dash-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            <p>No machines registered yet.</p>
+            <p class="hint">Install KungConnect Agent on a machine to see it here.</p>
+        </div>
+    }
+    else
+    {
+        <div class="machine-grid">
+            @foreach (var m in _machines)
+            {
+                <div class="machine-card @(m.Online ? "online" : "offline")">
+                    <div class="machine-card-header">
+                        <span class="machine-status-dot"></span>
+                        <span class="machine-name">@m.Alias</span>
+                        <span class="machine-os">@m.OsType</span>
+                    </div>
+                    <p class="machine-host">@m.Hostname</p>
+                    <p class="machine-seen">Last seen @m.LastSeenRelative</p>
+                    <button class="btn-primary" style="width:100%;margin-top:1rem"
+                            disabled="@(!m.Online)"
+                            @onclick="() => ConnectToMachine(m)">
+                        @(m.Online ? "Connect" : "Offline")
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+    @if (_connectError is not null)
+    {
+        <p class="error" style="margin-top:1rem">@_connectError</p>
+    }
+</div>
+
+@code {
+    private List<MachineViewModel> _machines = [];
+    private bool _loading = true;
+    private string? _connectError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.InitializeAsync();
+        Auth.ApplyAuthHeader();
+        await LoadMachinesAsync();
+    }
+
+    private async Task LoadMachinesAsync()
+    {
+        _loading = true;
+        try
+        {
+            var dtos = await Http.GetFromJsonAsync<MachineDto[]>("/api/machines") ?? [];
+            _machines = dtos.Select(d => new MachineViewModel(d)).ToList();
+        }
+        catch { /* handled by empty state */ }
+        finally { _loading = false; }
+    }
+
+    private async Task ConnectToMachine(MachineViewModel m)
+    {
+        _connectError = null;
+        // Launch the desktop client via custom URI scheme.
+        // The desktop app registers itself as the handler for kungconnect://
+        var uri = $"kungconnect://session?server={Uri.EscapeDataString(Nav.BaseUri.TrimEnd('/'))}" +
+                  $"&machine={m.Id}&token={Uri.EscapeDataString(Auth.AccessToken ?? "")}";
+        try
+        {
+            await JS.InvokeVoidAsync("window.open", uri, "_self");
+        }
+        catch
+        {
+            _connectError = "Could not launch KungConnect desktop client. Is it installed?";
+        }
+    }
+
+    // ── View models ─────────────────────────────────────────────────────────
+
+    private sealed record MachineDto(
+        Guid Id, string Alias, string Hostname,
+        string OsType, string Status, string AgentVersion,
+        DateTimeOffset LastSeen);
+
+    private sealed class MachineViewModel(MachineDto d)
+    {
+        public Guid   Id       => d.Id;
+        public string Alias    => d.Alias;
+        public string Hostname => d.Hostname;
+        public string OsType   => d.OsType;
+        public bool   Online   => d.Status == "Online";
+        public string LastSeenRelative
+        {
+            get
+            {
+                var diff = DateTimeOffset.UtcNow - d.LastSeen;
+                return diff.TotalSeconds < 90  ? "just now"
+                     : diff.TotalMinutes < 60  ? $"{(int)diff.TotalMinutes}m ago"
+                     : diff.TotalHours   < 24  ? $"{(int)diff.TotalHours}h ago"
+                     : $"{(int)diff.TotalDays}d ago";
+            }
+        }
+    }
+}

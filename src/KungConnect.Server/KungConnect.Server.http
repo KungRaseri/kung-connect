@@ -1,0 +1,6 @@
+@KungConnect.Server_HostAddress = http://localhost:5247
+
+GET {{KungConnect.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

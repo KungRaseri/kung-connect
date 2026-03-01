@@ -1,0 +1,74 @@
+@page "/login"
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>KungConnect — Sign In</PageTitle>
+
+<div class="join-container" style="max-width:380px">
+    <div style="margin-bottom:2rem;text-align:center">
+        <div class="kc-icon-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h1 class="join-title" style="font-size:1.8rem;margin-top:.75rem">KungConnect</h1>
+        <p class="join-subtitle">Admin sign in</p>
+    </div>
+
+    <div class="card" style="text-align:left">
+        <label class="field-label">Username</label>
+        <input class="field-input @(_error is not null ? "field-error" : "")"
+               @bind="_username" @bind:event="oninput" @onkeydown="OnKeyDown"
+               placeholder="admin" autocomplete="username" />
+
+        <label class="field-label" style="margin-top:1rem">Password</label>
+        <input class="field-input @(_error is not null ? "field-error" : "")"
+               type="password" @bind="_password" @bind:event="oninput" @onkeydown="OnKeyDown"
+               placeholder="••••••••" autocomplete="current-password" />
+
+        @if (_error is not null)
+        {
+            <p class="error" style="margin-top:.75rem">@_error</p>
+        }
+
+        <button class="btn-primary" style="width:100%;margin-top:1.5rem"
+                @onclick="LoginAsync" disabled="@_busy">
+            @(_busy ? "Signing in…" : "Sign In")
+        </button>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private string _username = "";
+    private string _password = "";
+    private string? _error;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.InitializeAsync();
+        if (Auth.IsAuthenticated)
+            Nav.NavigateTo(ReturnUrl ?? "/dashboard", replace: true);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await LoginAsync();
+    }
+
+    private async Task LoginAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password)) return;
+        _busy = true;
+        _error = null;
+        var (ok, err) = await Auth.LoginAsync(_username, _password);
+        _busy = false;
+        if (ok)
+            Nav.NavigateTo(ReturnUrl ?? "/dashboard", replace: true);
+        else
+            _error = err ?? "Login failed";
+    }
+}

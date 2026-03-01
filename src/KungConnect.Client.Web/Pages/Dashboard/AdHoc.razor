@@ -1,0 +1,182 @@
+@page "/dashboard/adhoc"
+@layout DashboardLayout
+@inject AuthService Auth
+@inject IConfiguration Config
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@implements IAsyncDisposable
+
+<PageTitle>KungConnect — Ad Hoc Session</PageTitle>
+
+<div class="dash-page">
+    <div class="dash-page-header">
+        <div style="display:flex;align-items:center;gap:.75rem">
+            <button class="btn-ghost" @onclick='() => Nav.NavigateTo("/dashboard")'>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1.1rem;height:1.1rem">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <h2>New Ad Hoc Session</h2>
+        </div>
+    </div>
+
+    @if (_state == AdHocState.Setup)
+    {
+        <div class="adhoc-card">
+            <p class="adhoc-desc">
+                Generate a 6-digit code and share it with your customer.
+                Once they enter it at <strong>@_joinUrl</strong>, the session will start automatically.
+            </p>
+
+            <label class="field-label" style="margin-top:1.5rem">Session Code</label>
+            <div class="code-input-row">
+                <input class="code-input" maxlength="6" pattern="\d{6}"
+                       @bind="_code" @bind:event="oninput"
+                       placeholder="______" />
+                <button class="btn-ghost" @onclick="RegenerateCode" title="Generate new code">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1.2rem;height:1.2rem">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
+            </div>
+            <p class="hint" style="margin-top:.4rem">You can edit the code — useful for dictating it by phone.</p>
+
+            @if (_setupError is not null)
+            {
+                <p class="error">@_setupError</p>
+            }
+
+            <button class="btn-primary" style="margin-top:1.5rem;width:100%"
+                    @onclick="StartSessionAsync"
+                    disabled="@(_busy || _code.Length != 6)">
+                @(_busy ? "Starting…" : "Start Session")
+            </button>
+        </div>
+    }
+    else if (_state == AdHocState.Waiting)
+    {
+        <div class="adhoc-card" style="text-align:center">
+            <p class="adhoc-desc">Share this code with your customer:</p>
+            <div class="adhoc-code-display">@_code</div>
+            <p class="hint" style="margin-top:.5rem">
+                Ask them to go to <a href="@_joinUrl" target="_blank" class="kc-link">@_joinUrl</a>
+                and enter the code above.
+            </p>
+            <div class="spinner" style="margin:2rem auto"></div>
+            <p class="hint">Waiting for customer to connect…</p>
+            <button class="btn-ghost" style="margin-top:1rem" @onclick="CancelAsync">Cancel</button>
+        </div>
+    }
+    else if (_state == AdHocState.Launching)
+    {
+        <div class="adhoc-card" style="text-align:center">
+            <span class="icon-ok">✓</span>
+            <h3 style="color:#f1f5f9;margin:.5rem 0">Customer connected!</h3>
+            <p class="hint">Launching KungConnect desktop client…</p>
+            <p class="hint" style="margin-top:1rem">
+                If the app didn't open, make sure KungConnect is installed and
+                <a href="@_launchUri" class="kc-link">click here to try again</a>.
+            </p>
+            <button class="btn-ghost" style="margin-top:1.5rem" @onclick='() => Nav.NavigateTo("/dashboard")'>
+                Back to Machines
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private enum AdHocState { Setup, Waiting, Launching }
+
+    private AdHocState _state = AdHocState.Setup;
+    private string _code = "";
+    private string _joinUrl = "";
+    private string _launchUri = "";
+    private bool _busy;
+    private string? _setupError;
+
+    private Microsoft.AspNetCore.SignalR.Client.HubConnection? _hub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.InitializeAsync();
+        Auth.ApplyAuthHeader();
+        _joinUrl = Nav.BaseUri.TrimEnd('/') + "/join";
+        RegenerateCode();
+        await ConnectHubAsync();
+    }
+
+    private void RegenerateCode()
+    {
+        // Client-side 6-digit random (server will accept any valid 6-digit value)
+        _code = Random.Shared.Next(100_000, 1_000_000).ToString();
+    }
+
+    private async Task ConnectHubAsync()
+    {
+        var serverUrl = Config["ServerUrl"] ?? Nav.BaseUri.TrimEnd('/');
+        _hub = new Microsoft.AspNetCore.SignalR.Client.HubConnectionBuilder()
+            .WithUrl($"{serverUrl}/hubs/signaling",
+                opts => opts.AccessTokenProvider = () => Task.FromResult(Auth.AccessToken))
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Server tells us the customer has connected
+        _hub.On<string>("JoinCodeCustomerReady", async targetConnId =>
+        {
+            _launchUri = BuildLaunchUri(targetConnId);
+            _state = AdHocState.Launching;
+            await InvokeAsync(StateHasChanged);
+            // Fire the custom URI scheme to open the desktop client
+            await JS.InvokeVoidAsync("window.open", _launchUri, "_self");
+        });
+
+        await _hub.StartAsync();
+    }
+
+    private async Task StartSessionAsync()
+    {
+        if (_code.Length != 6 || !_code.All(char.IsAsciiDigit))
+        {
+            _setupError = "Code must be exactly 6 digits.";
+            return;
+        }
+        _busy = true;
+        _setupError = null;
+        try
+        {
+            if (_hub?.State == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected)
+                await _hub.InvokeAsync("JoinCodeConnect", _code);
+            _state = AdHocState.Waiting;
+        }
+        catch (Exception ex)
+        {
+            _setupError = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task CancelAsync()
+    {
+        _state = AdHocState.Setup;
+        // Disconnect and reconnect hub so old listeners are cleaned up
+        if (_hub is not null) await _hub.StopAsync();
+        await ConnectHubAsync();
+    }
+
+    private string BuildLaunchUri(string targetConnId)
+    {
+        var server = Uri.EscapeDataString(Nav.BaseUri.TrimEnd('/'));
+        var token  = Uri.EscapeDataString(Auth.AccessToken ?? "");
+        return $"kungconnect://adhoc?server={server}&target={targetConnId}&token={token}&code={_code}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null)
+        {
+            await _hub.StopAsync();
+            await _hub.DisposeAsync();
+        }
+    }
+}

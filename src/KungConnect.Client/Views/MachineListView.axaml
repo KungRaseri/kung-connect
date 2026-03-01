@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:KungConnect.Client.ViewModels"
+             xmlns:dto="using:KungConnect.Shared.DTOs.Machines"
+             x:Class="KungConnect.Client.Views.MachineListView"
+             x:DataType="vm:MachineListViewModel">
+
+  <DockPanel>
+
+    <!-- Toolbar -->
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="12,8">
+      <TextBlock Text="KungConnect" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/>
+      <Button Content="⟳ Refresh" Command="{Binding RefreshCommand}" VerticalAlignment="Center"/>
+      <Button Content="🔗 Join with Code" Command="{Binding ConnectWithCodeCommand}" VerticalAlignment="Center"/>
+      <ProgressBar IsVisible="{Binding IsBusy}" IsIndeterminate="True" Width="120" Height="4" VerticalAlignment="Center"/>
+      <TextBlock Text="{Binding ErrorMessage}" Foreground="Red"
+                 IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 VerticalAlignment="Center"/>
+    </StackPanel>
+
+    <!-- Machine list -->
+    <ScrollViewer>
+      <ItemsControl ItemsSource="{Binding Machines}" Margin="12,0">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="dto:MachineDto">
+            <Border BorderBrush="#30808080" BorderThickness="1" CornerRadius="6"
+                    Padding="12" Margin="0,4" Background="#08000000">
+              <Grid ColumnDefinitions="*,Auto">
+
+                <StackPanel Grid.Column="0" Spacing="2">
+                  <TextBlock Text="{Binding Alias}" FontWeight="SemiBold" FontSize="15"/>
+                  <TextBlock Text="{Binding OsType}" Foreground="#888" FontSize="12"/>
+                  <TextBlock Text="{Binding Hostname}" Foreground="#888" FontSize="12"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <!-- Online indicator -->
+                  <Ellipse Width="10" Height="10">
+                    <Ellipse.Fill>
+                      <SolidColorBrush Color="{Binding Status,
+                        Converter={x:Static vm:StatusToColorConverter.Instance}}"/>
+                    </Ellipse.Fill>
+                  </Ellipse>
+                  <TextBlock Text="{Binding Status}" VerticalAlignment="Center" FontSize="12"/>
+                  <Button Content="Connect"
+                          Command="{Binding $parent[ItemsControl].DataContext.ConnectCommand}"
+                          CommandParameter="{Binding}"/>
+                </StackPanel>
+
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+  </DockPanel>
+</UserControl>

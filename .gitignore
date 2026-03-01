@@ -1,0 +1,30 @@
+# ── Build artifacts ──────────────────────────────────────────────────────────
+bin/
+obj/
+*.user
+.vs/
+.idea/
+*.suo
+*.swp
+
+# ── .NET / Rider ─────────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+publish/
+out/
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
+.env
+appsettings.Production.json
+appsettings.Staging.json
+**/appsettings.*.json
+!**/appsettings.json
+!**/appsettings.Development.json
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+deploy/.env
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini

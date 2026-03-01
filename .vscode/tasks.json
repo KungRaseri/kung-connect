@@ -1,0 +1,198 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // ── Build ──────────────────────────────────────────────────────────────────
+    {
+      "label": "build: solution",
+      "type": "shell",
+      "command": "dotnet build KungConnect.sln",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile"
+    },
+
+    // ── Run: Server ────────────────────────────────────────────────────────────
+    {
+      "label": "run: Server",
+      "type": "shell",
+      "command": "dotnet run --project src/KungConnect.Server/KungConnect.Server.csproj",
+      "group": "test",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "run"
+      },
+      "problemMatcher": {
+        "owner": "dotnet",
+        "pattern": {
+          "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building\\.\\.\\.",
+          "endsPattern": "Now listening on:"
+        }
+      }
+    },
+
+    // ── Run: Agent ─────────────────────────────────────────────────────────────
+    {
+      "label": "run: Agent",
+      "type": "shell",
+      "command": "dotnet run --project src/KungConnect.Agent/KungConnect.Agent.csproj",
+      "group": "test",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "run"
+      },
+      "problemMatcher": {
+        "owner": "dotnet",
+        "pattern": {
+          "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building\\.\\.\\.",
+          "endsPattern": "KungConnect Agent starting"
+        }
+      }
+    },
+
+    // ── Run: Desktop Client (Avalonia) ─────────────────────────────────────────
+    {
+      "label": "run: Client (Desktop)",
+      "type": "shell",
+      "command": "dotnet run --project src/KungConnect.Client/KungConnect.Client.csproj",
+      "group": "test",
+      "isBackground": false,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "run"
+      },
+      "problemMatcher": "$msCompile"
+    },
+
+    // ── Run: Browser Join Client (Blazor WASM) ─────────────────────────────────
+    {
+      "label": "run: Client.Web (Blazor)",
+      "type": "shell",
+      "command": "dotnet run --project src/KungConnect.Client.Web/KungConnect.Client.Web.csproj",
+      "group": "test",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "run"
+      },
+      "problemMatcher": {
+        "owner": "dotnet",
+        "pattern": {
+          "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building\\.\\.\\.",
+          "endsPattern": "Now listening on:"
+        }
+      }
+    },
+
+    // ── Run: Server + Agent together ───────────────────────────────────────────
+    {
+      "label": "run: Server + Agent",
+      "dependsOn": ["run: Server", "run: Agent"],
+      "dependsOrder": "parallel",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+
+    // ── Run: Full stack (Server + Agent + Client.Web) ──────────────────────────
+    {
+      "label": "run: Full Stack",
+      "dependsOn": ["run: Server", "run: Agent", "run: Client.Web (Blazor)"],
+      "dependsOrder": "parallel",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+
+    // ── Test ───────────────────────────────────────────────────────────────────
+    {
+      "label": "test: all",
+      "type": "shell",
+      "command": "dotnet test KungConnect.sln --logger console;verbosity=minimal",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": "$msCompile"
+    },
+
+    // ── EF Core migrations ─────────────────────────────────────────────────────
+    {
+      "label": "ef: add migration",
+      "type": "shell",
+      "command": "dotnet ef migrations add ${input:migrationName} --project src/KungConnect.Server/KungConnect.Server.csproj",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ef: update database",
+      "type": "shell",
+      "command": "dotnet ef database update --project src/KungConnect.Server/KungConnect.Server.csproj",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ],
+
+  "inputs": [
+    {
+      "id": "migrationName",
+      "type": "promptString",
+      "description": "Migration name (e.g. InitialCreate)",
+      "default": "InitialCreate"
+    }
+  ]
+}

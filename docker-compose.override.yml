@@ -1,0 +1,25 @@
+# docker-compose.override.yml — automatically merged when running locally.
+# Overrides production defaults with development-friendly settings.
+# Do NOT commit secrets. Use .env for actual values.
+
+services:
+
+  db:
+    # Expose Postgres on localhost so you can connect with pgAdmin / DBeaver / psql
+    ports:
+      - "5432:5432"
+
+  server:
+    # Enable Swagger UI and verbose logging in local dev
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    # Hot-reload friendly: re-build the image on each `docker compose up --build`
+    build:
+      args:
+        BUILD_CONFIGURATION: Debug
+
+  # Demo agent auto-accepts sessions in local dev for easy testing
+  agent:
+    environment:
+      Agent__AutoAcceptSessions: "true"
+      Agent__MachineAlias: LocalDockerAgent

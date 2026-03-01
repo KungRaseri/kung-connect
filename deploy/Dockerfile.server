@@ -1,0 +1,46 @@
+# ── KungConnect Server ────────────────────────────────────────────────────────
+# Builds the ASP.NET Core server AND the Blazor WASM join-client.
+# The WASM static files are merged into the server wwwroot so a single
+# container serves both the REST/SignalR API and the browser join page.
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Layer 1: project files only (maximises layer cache reuse on source changes)
+COPY src/KungConnect.Shared/KungConnect.Shared.csproj          src/KungConnect.Shared/
+COPY src/KungConnect.Server/KungConnect.Server.csproj          src/KungConnect.Server/
+COPY src/KungConnect.Client.Web/KungConnect.Client.Web.csproj  src/KungConnect.Client.Web/
+
+RUN dotnet restore src/KungConnect.Server/KungConnect.Server.csproj && \
+    dotnet restore src/KungConnect.Client.Web/KungConnect.Client.Web.csproj
+
+# Layer 2: source files
+COPY src/KungConnect.Shared/     src/KungConnect.Shared/
+COPY src/KungConnect.Server/     src/KungConnect.Server/
+COPY src/KungConnect.Client.Web/ src/KungConnect.Client.Web/
+
+# Publish Blazor WASM (produces static files in /wasm/publish/wwwroot)
+RUN dotnet publish src/KungConnect.Client.Web/KungConnect.Client.Web.csproj \
+      -c Release -o /wasm/publish --no-restore
+
+# Publish Server
+RUN dotnet publish src/KungConnect.Server/KungConnect.Server.csproj \
+      -c Release -o /app/publish --no-restore
+
+# Merge WASM static files into server wwwroot so UseStaticFiles serves them
+RUN cp -r /wasm/publish/wwwroot/. /app/publish/wwwroot/
+
+# ── Runtime image ─────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+WORKDIR /app
+
+# Install curl for the docker-compose health check
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:5000
+EXPOSE 5000
+
+ENTRYPOINT ["dotnet", "KungConnect.Server.dll"]

@@ -1,0 +1,162 @@
+﻿@page "/join"
+@inject IJSRuntime JS
+@inject IConfiguration Config
+@inject NavigationManager Nav
+
+<PageTitle>KungConnect — Join Session</PageTitle>
+
+<div class="join-container">
+    <div class="join-header">
+        <h1 class="join-title">KungConnect</h1>
+        <p class="join-subtitle">Remote support</p>
+    </div>
+
+    @if (_phase == Phase.EnterCode)
+    {
+        <div class="card">
+            <p style="color:#cbd5e1;margin-bottom:1.25rem">
+                Enter the 6-digit code your support agent gave you.
+            </p>
+            <div class="code-segments-row">
+                @for (int i = 0; i < 6; i++)
+                {
+                    var idx = i;
+                    <input class="code-segment @(_codeError ? "field-error" : "")"
+                           maxlength="1" inputmode="numeric" pattern="\d"
+                           value="@(_digits[idx])"
+                           @oninput="e => OnDigitInput(idx, e)"
+                           @onkeydown="e => OnDigitKeyDown(idx, e)" />
+                    @if (i == 2) { <span class="code-sep">-</span> }
+                }
+            </div>
+            @if (_codeError)
+            {
+                <p class="error" style="text-align:center;margin-top:.5rem">@_errorMessage</p>
+            }
+            <button class="btn-primary" style="width:100%;margin-top:1.5rem"
+                    disabled="@(_digits.Any(d => string.IsNullOrEmpty(d)))"
+                    @onclick="JoinAsync">
+                Join Session
+            </button>
+        </div>
+    }
+    else if (_phase == Phase.Launching)
+    {
+        <div class="card" style="text-align:center">
+            <div class="spinner" style="margin:0 auto 1.25rem"></div>
+            <h3 style="color:#f1f5f9;margin:0 0 .5rem">Opening KungConnect…</h3>
+            <p style="color:#94a3b8;line-height:1.6;margin-bottom:0">
+                The KungConnect app should open automatically.<br>
+                Keep this tab open while your session is active.
+            </p>
+
+            <div style="border-top:1px solid #334155;margin-top:1.5rem;padding-top:1.25rem">
+                <p style="color:#64748b;font-size:.82rem;margin:0 0 .75rem">
+                    App didn’t open? Download and install KungConnect first:
+                </p>
+                <div class="dl-row">
+                    <a href="/downloads/KungConnect-Setup.exe" class="btn-ghost dl-btn" download>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             style="width:.95rem;height:.95rem">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/>
+                            <path stroke-linecap="round" d="M8 21h8M12 17v4"/>
+                        </svg>
+                        Windows
+                    </a>
+                    <a href="/downloads/KungConnect.dmg" class="btn-ghost dl-btn" download>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             style="width:.95rem;height:.95rem">
+                            <circle cx="12" cy="8" r="4"/>
+                            <path stroke-linecap="round" d="M6 20v-2a6 6 0 0112 0v2"/>
+                        </svg>
+                        macOS
+                    </a>
+                    <a href="/downloads/KungConnect.AppImage" class="btn-ghost dl-btn" download>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             style="width:.95rem;height:.95rem">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path stroke-linecap="round" d="M12 8v4m0 4h.01"/>
+                        </svg>
+                        Linux
+                    </a>
+                </div>
+                <p style="color:#475569;font-size:.8rem;margin:.85rem 0 0">
+                    After installing, come back and
+                    <button class="kc-link" style="background:none;border:none;padding:0;font-size:.8rem;cursor:pointer"
+                            @onclick="RetryLaunchAsync">click here to open again</button>.
+                </p>
+            </div>
+
+            <button class="btn-ghost" style="margin-top:1.25rem;width:100%" @onclick="Reset">
+                ← Enter a different code
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private enum Phase { EnterCode, Launching }
+
+    private Phase    _phase = Phase.EnterCode;
+    private string[] _digits = new string[6];
+    private bool     _codeError;
+    private string   _errorMessage = "";
+    private string   _launchUri = "";
+
+    protected override void OnInitialized()
+    {
+        for (int i = 0; i < 6; i++) _digits[i] = "";
+    }
+
+    private async Task OnDigitInput(int idx, ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? "";
+        var val = new string(raw.Where(char.IsAsciiDigit).ToArray());
+        if (val.Length > 1) val = val[^1..];
+        _digits[idx] = val;
+        _codeError = false;
+        StateHasChanged();
+        if (val.Length == 1 && idx < 5)
+            await JS.InvokeVoidAsync("eval",
+                string.Format("document.querySelectorAll('.code-segment')[{0}].focus()", idx + 1));
+    }
+
+    private async Task OnDigitKeyDown(int idx, KeyboardEventArgs e)
+    {
+        if (e.Key == "Backspace" && string.IsNullOrEmpty(_digits[idx]) && idx > 0)
+            await JS.InvokeVoidAsync("eval",
+                string.Format("document.querySelectorAll('.code-segment')[{0}].focus()", idx - 1));
+        if (e.Key == "Enter" && _digits.All(d => !string.IsNullOrEmpty(d)))
+            await JoinAsync();
+    }
+
+    private async Task JoinAsync()
+    {
+        var code = string.Concat(_digits);
+        if (code.Length != 6 || !code.All(char.IsAsciiDigit))
+        {
+            _codeError = true;
+            _errorMessage = "Enter all 6 digits.";
+            return;
+        }
+
+        var serverUrl = Config["ServerUrl"] ?? Nav.BaseUri.TrimEnd('/');
+        _launchUri = $"kungconnect://join?code={code}&server={Uri.EscapeDataString(serverUrl)}";
+        _phase = Phase.Launching;
+        StateHasChanged();
+
+        await JS.InvokeVoidAsync("kcLaunchUri", _launchUri);
+    }
+
+    private async Task RetryLaunchAsync()
+        => await JS.InvokeVoidAsync("kcLaunchUri", _launchUri);
+
+    private void Reset()
+    {
+        _phase = Phase.EnterCode;
+        _digits = new string[6];
+        _codeError = false;
+        _errorMessage = "";
+        _launchUri = "";
+    }
+}

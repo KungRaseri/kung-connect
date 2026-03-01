@@ -1,0 +1,97 @@
+# KungConnect — Docker Compose
+#
+# Quick start:
+#   cp .env.example .env          # add your secrets
+#   docker compose up -d          # db + server (Blazor join page at http://localhost:5000)
+#
+# Optional profiles:
+#   docker compose --profile agent up -d    # also start a local demo agent
+#   docker compose --profile relay up -d    # also start coturn TURN server
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-kungconnect}
+      POSTGRES_USER:     ${POSTGRES_USER:-kungconnect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kungconnect} -d ${POSTGRES_DB:-kungconnect}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── KungConnect Server (API + SignalR + Blazor WASM join page) ───────────────
+  server:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${SERVER_PORT:-5000}:5000"
+      - "172.22.144.1:${SERVER_PORT:-5000}:5000"
+    environment:
+      ConnectionStrings__DefaultConnection: ${KUNGCONNECT_CONNECTION_STRING:?Set KUNGCONNECT_CONNECTION_STRING in .env}
+      Server__Mode:                  ${KUNGCONNECT_SERVER_MODE:-SingleTenant}
+      Server__AllowSelfRegistration: ${KUNGCONNECT_ALLOW_SELF_REGISTRATION:-true}
+      Jwt__Secret:                   ${KUNGCONNECT_JWT_SECRET:?Set KUNGCONNECT_JWT_SECRET in .env}
+      Jwt__Issuer:                   ${KUNGCONNECT_JWT_ISSUER:-KungConnect}
+      Jwt__Audience:                 ${KUNGCONNECT_JWT_AUDIENCE:-KungConnect}
+      Relay__Enabled:                ${RELAY_ENABLED:-false}
+      Relay__TurnServerUrl:          ${RELAY_TURN_SERVER_URL:-}
+      Relay__TurnUsername:           ${RELAY_TURN_USERNAME:-}
+      Relay__TurnPassword:           ${RELAY_TURN_PASSWORD:-}
+      Redis__Enabled:                ${REDIS_ENABLED:-false}
+      Redis__ConnectionString:       ${REDIS_CONNECTION_STRING:-}
+      ASPNETCORE_ENVIRONMENT:        ${ASPNETCORE_ENVIRONMENT:-Production}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── KungConnect Agent (demo/testing — profile: agent) ────────────────────────
+  # In production the agent runs natively on target machines; this container is
+  # useful for local smoke-testing without a physical target machine.
+  agent:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.agent
+    restart: unless-stopped
+    profiles: [agent]
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      Agent__ServerUrl:          http://server:5000
+      Agent__MachineAlias:       ${AGENT_ALIAS:-DockerAgent}
+      Agent__MachineSecret:      ${AGENT_SECRET:?Set AGENT_SECRET in .env}
+      Agent__AutoAcceptSessions: ${AGENT_AUTO_ACCEPT:-false}
+
+  # ── coturn TURN relay (optional — profile: relay) ────────────────────────────
+  coturn:
+    image: coturn/coturn:latest
+    restart: unless-stopped
+    network_mode: host          # TURN needs raw UDP access to host interfaces
+    profiles: [relay]
+    command: >
+      -n --log-file=stdout
+      --realm=kungconnect
+      --use-auth-secret
+      --static-auth-secret=${RELAY_TURN_SHARED_SECRET:?Set RELAY_TURN_SHARED_SECRET in .env}
+      --no-tls --no-dtls
+    volumes:
+      - coturn_data:/var/lib/coturn
+
+volumes:
+  db_data:
+  coturn_data:
