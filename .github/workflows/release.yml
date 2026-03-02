@@ -82,21 +82,21 @@ jobs:
         if: matrix.pkg == 'zip'
         run: |
           zip -j \
-            "KungConnect-${{ github.ref_name }}-${{ matrix.rid }}.zip" \
+            "KungConnect-${{ matrix.rid }}.zip" \
             "dist/${{ matrix.rid }}/${{ matrix.bin }}"
 
       - name: Package (tar.gz)
         if: matrix.pkg == 'tar'
         run: |
           tar -czf \
-            "KungConnect-${{ github.ref_name }}-${{ matrix.rid }}.tar.gz" \
+            "KungConnect-${{ matrix.rid }}.tar.gz" \
             -C "dist/${{ matrix.rid }}" "${{ matrix.bin }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: client-${{ matrix.rid }}
-          path: "KungConnect-${{ github.ref_name }}-${{ matrix.rid }}.*"
+          path: "KungConnect-${{ matrix.rid }}.*"
           if-no-files-found: error
 
   # ── Build & push the server Docker image to GHCR ───────────────────────────
@@ -172,13 +172,13 @@ jobs:
 
             ## Setting download URLs
 
-            After deploying the server, add these to your `.env` so the join page
-            offers the correct download link for each platform:
+            These are already set in `.env.example`. Copy them into your `.env` once
+            and they will always point to the latest release — no updates needed.
 
             ```env
-            DOWNLOADS_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/KungConnect-${{ github.ref_name }}-win-x64.zip
-            DOWNLOADS_MACOS_URL=https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/KungConnect-${{ github.ref_name }}-osx-arm64.zip
-            DOWNLOADS_LINUX_URL=https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/KungConnect-${{ github.ref_name }}-linux-x64.tar.gz
+            DOWNLOADS_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-win-x64.zip
+            DOWNLOADS_MACOS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-osx-arm64.zip
+            DOWNLOADS_LINUX_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-linux-x64.tar.gz
             ```
 
-            > **Intel Mac users:** use `KungConnect-${{ github.ref_name }}-osx-x64.zip` instead of the arm64 build.
+            > **Intel Mac users:** use `KungConnect-osx-x64.zip` instead of the arm64 build.
