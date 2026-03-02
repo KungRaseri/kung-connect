@@ -99,6 +99,74 @@ jobs:
           path: "KungConnect-${{ matrix.rid }}.*"
           if-no-files-found: error
 
+  # ── Build the agent for every supported platform ──────────────────────────
+  build-agent:
+    name: Agent — ${{ matrix.label }}
+    needs: [version]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            bin: KungConnect.Agent.exe
+            pkg: zip
+            label: Windows (x64)
+
+          - rid: linux-x64
+            bin: KungConnect.Agent
+            pkg: tar
+            label: Linux (x64)
+
+          - rid: linux-arm64
+            bin: KungConnect.Agent
+            pkg: tar
+            label: Linux (ARM64)
+
+          - rid: osx-arm64
+            bin: KungConnect.Agent
+            pkg: zip
+            label: macOS (Apple Silicon)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish — ${{ matrix.label }}
+        run: |
+          dotnet publish src/KungConnect.Agent/KungConnect.Agent.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:Version=${{ needs.version.outputs.semver }} \
+            -o dist/agent-${{ matrix.rid }}
+
+      - name: Package (zip)
+        if: matrix.pkg == 'zip'
+        run: |
+          zip -j \
+            "KungConnect-Agent-${{ matrix.rid }}.zip" \
+            "dist/agent-${{ matrix.rid }}/${{ matrix.bin }}"
+
+      - name: Package (tar.gz)
+        if: matrix.pkg == 'tar'
+        run: |
+          tar -czf \
+            "KungConnect-Agent-${{ matrix.rid }}.tar.gz" \
+            -C "dist/agent-${{ matrix.rid }}" "${{ matrix.bin }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-${{ matrix.rid }}
+          path: "KungConnect-Agent-${{ matrix.rid }}.*"
+          if-no-files-found: error
+
   # ── Build & push the server Docker image to GHCR ───────────────────────────
   docker:
     name: Docker — build & push
@@ -141,7 +209,7 @@ jobs:
   # ── Create GitHub Release with all artifacts ────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [build-client, docker]
+    needs: [build-client, build-agent, docker]
     runs-on: ubuntu-latest
 
     steps:
@@ -149,6 +217,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: client-*
+          merge-multiple: true
+          path: artifacts
+
+      - name: Download all agent artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: agent-*
           merge-multiple: true
           path: artifacts
 
@@ -163,6 +238,8 @@ jobs:
           files: |
             artifacts/KungConnect-*.zip
             artifacts/KungConnect-*.tar.gz
+            artifacts/KungConnect-Agent-*.zip
+            artifacts/KungConnect-Agent-*.tar.gz
           body: |
             ## Docker image
 
@@ -176,9 +253,16 @@ jobs:
             and they will always point to the latest release — no updates needed.
 
             ```env
+            # Desktop client (customer/join-page downloads)
             DOWNLOADS_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-win-x64.zip
             DOWNLOADS_MACOS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-osx-arm64.zip
             DOWNLOADS_LINUX_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-linux-x64.tar.gz
+
+            # Agent (install on machines you want to manage)
+            DOWNLOADS_AGENT_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-win-x64.zip
+            DOWNLOADS_AGENT_MACOS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-osx-arm64.zip
+            DOWNLOADS_AGENT_LINUX_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-linux-x64.tar.gz
+            DOWNLOADS_AGENT_LINUX_ARM64_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-linux-arm64.tar.gz
             ```
 
-            > **Intel Mac users:** use `KungConnect-osx-x64.zip` instead of the arm64 build.
+            > **Intel Mac users:** use `KungConnect-osx-x64.zip` / `KungConnect-Agent-osx-x64.zip` instead of the arm64 builds.

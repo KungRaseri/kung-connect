@@ -3,14 +3,17 @@ using Microsoft.AspNetCore.Mvc;
 namespace KungConnect.Server.Controllers;
 
 /// <summary>
-/// Serves download redirects for the KungConnect desktop client.
-/// Configure the URLs via Downloads__WindowsUrl / MacOsUrl / LinuxUrl
-/// environment variables (or appsettings.json).
+/// Serves download redirects for the KungConnect desktop client and agent.
+/// Configure the URLs via environment variables (or appsettings.json).
+/// Client: Downloads__WindowsUrl / MacOsUrl / LinuxUrl
+/// Agent:  Downloads__AgentWindowsUrl / AgentMacOsUrl / AgentLinuxUrl / AgentLinuxArm64Url
 /// </summary>
 [ApiController]
 [Route("downloads")]
 public class DownloadsController(IConfiguration config, ILogger<DownloadsController> logger) : ControllerBase
 {
+    // ── Desktop client (handles kungconnect:// URI scheme, used on the /join page) ─
+
     [HttpGet("windows")]
     public IActionResult Windows() => RedirectToDownload("WindowsUrl");
 
@@ -19,6 +22,22 @@ public class DownloadsController(IConfiguration config, ILogger<DownloadsControl
 
     [HttpGet("linux")]
     public IActionResult Linux() => RedirectToDownload("LinuxUrl");
+
+    // ── Agent (background service installed on machines to be managed) ──────
+
+    [HttpGet("agent/windows")]
+    public IActionResult AgentWindows() => RedirectToDownload("AgentWindowsUrl");
+
+    [HttpGet("agent/macos")]
+    public IActionResult AgentMacOs() => RedirectToDownload("AgentMacOsUrl");
+
+    [HttpGet("agent/linux")]
+    public IActionResult AgentLinux() => RedirectToDownload("AgentLinuxUrl");
+
+    [HttpGet("agent/linux-arm64")]
+    public IActionResult AgentLinuxArm64() => RedirectToDownload("AgentLinuxArm64Url");
+
+    // ────────────────────────────────────────────────────────────────
 
     private IActionResult RedirectToDownload(string key)
     {

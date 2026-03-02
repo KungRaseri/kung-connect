@@ -54,6 +54,10 @@ services:
       Downloads__WindowsUrl:         ${DOWNLOADS_WINDOWS_URL:-}
       Downloads__MacOsUrl:           ${DOWNLOADS_MACOS_URL:-}
       Downloads__LinuxUrl:           ${DOWNLOADS_LINUX_URL:-}
+      Downloads__AgentWindowsUrl:    ${DOWNLOADS_AGENT_WINDOWS_URL:-}
+      Downloads__AgentMacOsUrl:      ${DOWNLOADS_AGENT_MACOS_URL:-}
+      Downloads__AgentLinuxUrl:      ${DOWNLOADS_AGENT_LINUX_URL:-}
+      Downloads__AgentLinuxArm64Url: ${DOWNLOADS_AGENT_LINUX_ARM64_URL:-}
       ASPNETCORE_ENVIRONMENT:        ${ASPNETCORE_ENVIRONMENT:-Production}
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:5000/health || exit 1"]
