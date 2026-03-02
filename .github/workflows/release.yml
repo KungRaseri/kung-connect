@@ -151,12 +151,17 @@ jobs:
           merge-multiple: true
           path: artifacts
 
+      - name: List artifacts (debug)
+        run: ls -lR artifacts/
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: artifacts/**
+          files: |
+            artifacts/KungConnect-*.zip
+            artifacts/KungConnect-*.tar.gz
           body: |
             ## Docker image
 
