@@ -1,7 +1,9 @@
 ﻿@page "/join"
+@using Microsoft.AspNetCore.SignalR.Client
 @inject IJSRuntime JS
 @inject IConfiguration Config
 @inject NavigationManager Nav
+@implements IAsyncDisposable
 
 <PageTitle>KungConnect — Join Session</PageTitle>
 
@@ -44,10 +46,18 @@
     {
         <div class="card" style="text-align:center">
             <div class="spinner" style="margin:0 auto 1.25rem"></div>
-            <h3 style="color:#f1f5f9;margin:0 0 .5rem">Opening KungConnect…</h3>
+            <h3 style="color:#f1f5f9;margin:0 0 .5rem">
+                @(_operatorJoined ? "Support agent connected!" : "Opening KungConnect\u2026")
+            </h3>
             <p style="color:#94a3b8;line-height:1.6;margin-bottom:0">
-                The KungConnect app should open automatically.<br>
-                Keep this tab open while your session is active.
+                @if (_operatorJoined)
+                {
+                    <span>Your support agent is now connected.<br>Keep this tab open while your session is active.</span>
+                }
+                else
+                {
+                    <span>The KungConnect app should open automatically.<br>Keep this tab open while your session is active.</span>
+                }
             </p>
 
             <div style="border-top:1px solid #334155;margin-top:1.5rem;padding-top:1.25rem">
@@ -109,6 +119,8 @@
     private string   _downloadUrl    = "/downloads/windows";
     private List<string>   _installSteps   = [];
     private List<Platform> _otherPlatforms = [];
+    private bool           _operatorJoined = false;
+    private HubConnection? _hub;
 
     protected override void OnInitialized()
     {
@@ -155,10 +167,40 @@
         _phase = Phase.Launching;
         StateHasChanged();
 
-        // Fire the URI. The Launching card already shows the download fallback
-        // inline, so no phase transition is needed — the user sees it immediately.
+        // Connect to the hub anonymously and register as waiting
+        // This triggers JoinCodeCustomerReady on the operator's AdHoc page,
+        // which fires kungconnect://adhoc to launch the operator's desktop client.
+        await ConnectHubAndNotifyAsync(code, serverUrl);
+
+        // Fire the URI to launch the customer's desktop client in parallel
         try { await JS.InvokeVoidAsync("kcLaunchUri", _launchUri); }
         catch { /* no registered handler is fine */ }
+    }
+
+    private async Task ConnectHubAndNotifyAsync(string code, string serverUrl)
+    {
+        try
+        {
+            _hub = new HubConnectionBuilder()
+                .WithUrl($"{serverUrl}/hubs/signaling")
+                .WithAutomaticReconnect()
+                .Build();
+
+            // Server fires this when the operator's desktop client has connected
+            _hub.On<string>("OperatorJoined", async _ =>
+            {
+                _operatorJoined = true;
+                await InvokeAsync(StateHasChanged);
+            });
+
+            await _hub.StartAsync();
+            await _hub.InvokeAsync("JoinCodeCreate", code);
+        }
+        catch
+        {
+            // Non-fatal: the operator side will just time out waiting
+            // The customer's desktop client launch still works
+        }
     }
 
     private async Task DownloadAndShowInstructionsAsync(string os)
@@ -220,10 +262,20 @@
 
     private void Reset()
     {
-        _phase        = Phase.EnterCode;
-        _digits       = new string[6];
-        _codeError    = false;
-        _errorMessage = "";
-        _launchUri    = "";
+        _phase          = Phase.EnterCode;
+        _digits         = new string[6];
+        _codeError      = false;
+        _errorMessage   = "";
+        _launchUri      = "";
+        _operatorJoined = false;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null)
+        {
+            await _hub.StopAsync();
+            await _hub.DisposeAsync();
+        }
     }
 }
