@@ -4,7 +4,10 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Consistent binary name on all platforms: KungConnect / KungConnect.exe -->
+    <AssemblyName>KungConnect</AssemblyName>
+    <!-- app.manifest is a Windows-only concept; skip it for Linux/macOS targets -->
+    <ApplicationManifest Condition="'$(RuntimeIdentifier)' == '' OR $(RuntimeIdentifier.StartsWith('win'))">app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 

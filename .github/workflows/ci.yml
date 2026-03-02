@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ── Build & test the full solution ──────────────────────────────────────────
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore KungConnect.sln
+
+      - name: Build
+        run: dotnet build KungConnect.sln --no-restore -c Release
+
+      - name: Test
+        run: |
+          dotnet test KungConnect.sln --no-build -c Release \
+            --logger "console;verbosity=normal" \
+            --results-directory test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/**
+
+  # ── Validate the client compiles for all target platforms ───────────────────
+  # (Framework-dependent, no runtime packs downloaded — just a compile check)
+  client-compile-check:
+    name: Client compile check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore src/KungConnect.Client/KungConnect.Client.csproj
+
+      - name: Build (framework-dependent — validates cross-platform compile)
+        run: |
+          dotnet build src/KungConnect.Client/KungConnect.Client.csproj \
+            --no-restore -c Release
+
+  # ── Validate the Docker image builds correctly ──────────────────────────────
+  docker-validate:
+    name: Validate Docker build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build server image (no push)
+        run: docker build -f deploy/Dockerfile.server -t kung-connect-server:ci .
