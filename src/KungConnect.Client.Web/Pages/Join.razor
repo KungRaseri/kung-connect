@@ -55,30 +55,30 @@
                     App didn’t open? Download and install KungConnect first:
                 </p>
                 <div class="dl-row">
-                    <a href="/downloads/KungConnect-Setup.exe" class="btn-ghost dl-btn" download>
+                    <button class="btn-ghost dl-btn" @onclick='() => DownloadAndShowInstructionsAsync("windows")'>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                              style="width:.95rem;height:.95rem">
                             <rect x="2" y="3" width="20" height="14" rx="2"/>
                             <path stroke-linecap="round" d="M8 21h8M12 17v4"/>
                         </svg>
                         Windows
-                    </a>
-                    <a href="/downloads/KungConnect.dmg" class="btn-ghost dl-btn" download>
+                    </button>
+                    <button class="btn-ghost dl-btn" @onclick='() => DownloadAndShowInstructionsAsync("macos")'>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                              style="width:.95rem;height:.95rem">
                             <circle cx="12" cy="8" r="4"/>
                             <path stroke-linecap="round" d="M6 20v-2a6 6 0 0112 0v2"/>
                         </svg>
                         macOS
-                    </a>
-                    <a href="/downloads/KungConnect.AppImage" class="btn-ghost dl-btn" download>
+                    </button>
+                    <button class="btn-ghost dl-btn" @onclick='() => DownloadAndShowInstructionsAsync("linux")'>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                              style="width:.95rem;height:.95rem">
                             <circle cx="12" cy="12" r="10"/>
                             <path stroke-linecap="round" d="M12 8v4m0 4h.01"/>
                         </svg>
                         Linux
-                    </a>
+                    </button>
                 </div>
                 <p style="color:#475569;font-size:.8rem;margin:.85rem 0 0">
                     After installing, come back and
