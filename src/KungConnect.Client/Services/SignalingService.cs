@@ -112,6 +112,3 @@ public sealed class SignalingService : ISignalingService
             await _hub.DisposeAsync();
     }
 }
-
-    }
-}

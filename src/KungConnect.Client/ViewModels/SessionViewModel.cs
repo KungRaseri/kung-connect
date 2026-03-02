@@ -207,7 +207,7 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
         try
         {
             // Set remote description (agent's offer)
-            var setResult = await _pc.setRemoteDescription(
+            var setResult = _pc.setRemoteDescription(
                 new RTCSessionDescriptionInit { type = RTCSdpType.offer, sdp = sdp.Sdp });
 
             if (setResult != SetDescriptionResultEnum.OK)
@@ -229,13 +229,13 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
         }
     }
 
-    private async void OnAnswerReceived(object? sender, SdpMessage sdp)
+    private void OnAnswerReceived(object? sender, SdpMessage sdp)
     {
         // Ad-hoc: browser customer sent the SDP answer.
         if (_pc is null) return;
         try
         {
-            var result = await _pc.setRemoteDescription(
+            var result = _pc.setRemoteDescription(
                 new RTCSessionDescriptionInit { type = RTCSdpType.answer, sdp = sdp.Sdp });
 
             if (result != SetDescriptionResultEnum.OK)
@@ -249,16 +249,16 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
         }
     }
 
-    private async void OnIceCandidateReceived(object? sender, IceCandidateMessage ice)
+    private void OnIceCandidateReceived(object? sender, IceCandidateMessage ice)
     {
         if (_pc is null) return;
         try
         {
-            await _pc.addIceCandidate(new RTCIceCandidateInit
+            _pc.addIceCandidate(new RTCIceCandidateInit
             {
                 candidate     = ice.Candidate,
                 sdpMid        = ice.SdpMid,
-                sdpMLineIndex = (ushort?)ice.SdpMLineIndex
+                sdpMLineIndex = (ushort)(ice.SdpMLineIndex ?? 0)
             });
         }
         catch { /* non-fatal — ICE negotiation can continue */ }

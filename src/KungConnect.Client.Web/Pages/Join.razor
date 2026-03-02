@@ -186,8 +186,7 @@
             JoinSvc.StateChanged += async () => await InvokeAsync(StateHasChanged);
 
             await JoinSvc.ConnectAsync(serverUrl, code);
-
-            _operatorJoined = JoinSvc.ConnectionState is "active" or "connected" or "capturing";
+            // _operatorJoined is now a computed property derived from JoinSvc.ConnectionState
         }
         catch
         {

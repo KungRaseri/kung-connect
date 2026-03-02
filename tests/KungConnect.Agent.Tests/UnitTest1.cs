@@ -1,10 +1,1 @@
-﻿namespace KungConnect.Agent.Tests;
-
-public class UnitTest1
-{
-    [Fact]
-    public void Test1()
-    {
-
-    }
-}
+﻿// Placeholder — remove this file once a real test is added in this namespace.

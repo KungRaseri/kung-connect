@@ -59,12 +59,9 @@ public class Worker(
                 logger.LogWarning("Session {Id}: AutoAcceptSessions=false – implement UI approval.", sessionId);
         });
 
-        conn.On<Guid, string>(SignalingEvents.ReceiveAnswer, (sessionId, _) =>
-            logger.LogDebug("ReceiveAnswer for {Id} — routed by SessionHandlerService", sessionId));
-
-        conn.On<Guid, string, string, int?>(SignalingEvents.ReceiveIceCandidate,
-            (sessionId, _, _, _) =>
-            logger.LogDebug("ReceiveIceCandidate for {Id} — routed by SessionHandlerService", sessionId));
+        // NOTE: ReceiveAnswer and ReceiveIceCandidate are registered per-session
+        // inside SessionHandlerService.HandleSessionAsync with proper session-ID guards.
+        // Worker does NOT register them here to avoid duplicate dispatch.
 
         conn.On<Guid>(SignalingEvents.SessionEnded, sessionId =>
         {

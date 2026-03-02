@@ -111,27 +111,27 @@ public class SessionHandlerService(
         // These fire when the operator sends back the answer and ICE candidates.
         var conn = signalingClient.Connection;
 
-        conn.On<Guid, string>(SignalingEvents.ReceiveAnswer, async (sid, sdp) =>
+        conn.On<Guid, string>(SignalingEvents.ReceiveAnswer, (sid, sdp) =>
         {
             if (sid != sessionId) return;
             logger.LogDebug("Session {Id}: received SDP answer", sessionId);
-            var result = await pc.setRemoteDescription(
+            var result = pc.setRemoteDescription(
                 new RTCSessionDescriptionInit { type = RTCSdpType.answer, sdp = sdp });
             if (result != SetDescriptionResultEnum.OK)
                 logger.LogWarning("Session {Id}: setRemoteDescription(answer) returned {Result}", sessionId, result);
         });
 
         conn.On<Guid, string, string, int?>(SignalingEvents.ReceiveIceCandidate,
-            async (sid, candidate, sdpMid, sdpMLineIndex) =>
+            (sid, candidate, sdpMid, sdpMLineIndex) =>
             {
                 if (sid != sessionId) return;
                 try
                 {
-                    await pc.addIceCandidate(new RTCIceCandidateInit
+                    pc.addIceCandidate(new RTCIceCandidateInit
                     {
                         candidate     = candidate,
                         sdpMid        = sdpMid,
-                        sdpMLineIndex = (ushort?)sdpMLineIndex
+                        sdpMLineIndex = (ushort)(sdpMLineIndex ?? 0)
                     });
                 }
                 catch (Exception ex)
