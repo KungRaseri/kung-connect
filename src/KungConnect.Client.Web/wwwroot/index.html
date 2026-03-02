@@ -27,10 +27,29 @@
     </div>
     <script src="js/screen-capture.js"></script>
     <script>
-        // Launch a custom URI scheme (e.g. kungconnect://) without navigating away
+        // Fire a custom URI scheme without navigating away.
         window.kcLaunchUri = function (uri) {
             var a = document.createElement('a');
             a.href = uri;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () { document.body.removeChild(a); }, 200);
+        };
+
+        // Returns 'windows', 'macos', or 'linux' based on the browser UA
+        window.kcDetectOs = function () {
+            var ua = navigator.userAgent;
+            if (/Win/i.test(ua)) return 'windows';
+            if (/Mac/i.test(ua)) return 'macos';
+            return 'linux';
+        };
+
+        // Programmatically trigger a file download
+        window.kcTriggerDownload = function (url) {
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = '';
             a.style.display = 'none';
             document.body.appendChild(a);
             a.click();

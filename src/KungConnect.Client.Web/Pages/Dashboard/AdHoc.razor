@@ -114,10 +114,16 @@
 
     private async Task ConnectHubAsync()
     {
+        if (string.IsNullOrEmpty(Auth.AccessToken))
+        {
+            Nav.NavigateTo("/login?returnUrl=" + Uri.EscapeDataString(Nav.Uri), replace: true);
+            return;
+        }
+
         var serverUrl = Config["ServerUrl"] ?? Nav.BaseUri.TrimEnd('/');
         _hub = new Microsoft.AspNetCore.SignalR.Client.HubConnectionBuilder()
             .WithUrl($"{serverUrl}/hubs/signaling",
-                opts => opts.AccessTokenProvider = () => Task.FromResult(Auth.AccessToken))
+                opts => opts.AccessTokenProvider = () => Task.FromResult<string?>(Auth.AccessToken))
             .WithAutomaticReconnect()
             .Build();
 
@@ -131,7 +137,18 @@
             await JS.InvokeVoidAsync("window.open", _launchUri, "_self");
         });
 
-        await _hub.StartAsync();
+        try
+        {
+            await _hub.StartAsync();
+        }
+        catch (HttpRequestException ex)
+            when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            // Token was accepted client-side but rejected by the server
+            // (e.g. secret rotated, or race between expiry check and request).
+            await Auth.LogoutAsync();
+            Nav.NavigateTo("/login?returnUrl=" + Uri.EscapeDataString(Nav.Uri), replace: true);
+        }
     }
 
     private async Task StartSessionAsync()

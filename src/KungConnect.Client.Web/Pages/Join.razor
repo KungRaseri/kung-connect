@@ -95,13 +95,20 @@
 </div>
 
 @code {
-    private enum Phase { EnterCode, Launching }
+    private enum Phase { EnterCode, Launching, NotInstalled, Downloading }
+
+    private record Platform(string Label, string Os);
 
     private Phase    _phase = Phase.EnterCode;
     private string[] _digits = new string[6];
     private bool     _codeError;
-    private string   _errorMessage = "";
-    private string   _launchUri = "";
+    private string   _errorMessage   = "";
+    private string   _launchUri      = "";
+    private string   _currentOs      = "windows";
+    private string   _currentOsLabel = "Windows";
+    private string   _downloadUrl    = "/downloads/windows";
+    private List<string>   _installSteps   = [];
+    private List<Platform> _otherPlatforms = [];
 
     protected override void OnInitialized()
     {
@@ -140,23 +147,83 @@
             return;
         }
 
+        _currentOs = await JS.InvokeAsync<string>("kcDetectOs");
+        ApplyOsInfo(_currentOs);
+
         var serverUrl = Config["ServerUrl"] ?? Nav.BaseUri.TrimEnd('/');
         _launchUri = $"kungconnect://join?code={code}&server={Uri.EscapeDataString(serverUrl)}";
         _phase = Phase.Launching;
         StateHasChanged();
 
-        await JS.InvokeVoidAsync("kcLaunchUri", _launchUri);
+        // Fire the URI. The Launching card already shows the download fallback
+        // inline, so no phase transition is needed — the user sees it immediately.
+        try { await JS.InvokeVoidAsync("kcLaunchUri", _launchUri); }
+        catch { /* no registered handler is fine */ }
+    }
+
+    private async Task DownloadAndShowInstructionsAsync(string os)
+    {
+        ApplyOsInfo(os);
+        _currentOs = os;
+        await JS.InvokeVoidAsync("kcTriggerDownload", _downloadUrl);
+        _phase = Phase.Downloading;
     }
 
     private async Task RetryLaunchAsync()
-        => await JS.InvokeVoidAsync("kcLaunchUri", _launchUri);
+    {
+        try { await JS.InvokeVoidAsync("kcLaunchUri", _launchUri); }
+        catch { }
+    }
+
+    private void ApplyOsInfo(string os)
+    {
+        if (os == "macos")
+        {
+            _currentOsLabel = "macOS";
+            _downloadUrl    = "/downloads/macos";
+            _installSteps   =
+            [
+                "Open the downloaded <code>KungConnect.dmg</code> file.",
+                "Drag KungConnect into your <strong>Applications</strong> folder.",
+                "Open KungConnect from Applications (right-click → Open the first time to bypass Gatekeeper).",
+                "Come back to this tab and click the button below."
+            ];
+            _otherPlatforms = [new("Windows", "windows"), new("Linux", "linux")];
+        }
+        else if (os == "linux")
+        {
+            _currentOsLabel = "Linux";
+            _downloadUrl = "/downloads/linux";
+            _installSteps   =
+            [
+                "Open a terminal in your Downloads folder.",
+                "Run: <code>chmod +x KungConnect.AppImage</code>",
+                "Run: <code>./KungConnect.AppImage --install</code> (registers the protocol handler)",
+                "Come back to this tab and click the button below."
+            ];
+            _otherPlatforms = [new("Windows", "windows"), new("macOS", "macos")];
+        }
+        else // windows
+        {
+            _currentOsLabel = "Windows";
+            _downloadUrl = "/downloads/windows";
+            _installSteps   =
+            [
+                "Open the downloaded <code>KungConnect-Setup.exe</code>.",
+                "Click <strong>Yes</strong> when Windows asks for permission.",
+                "Follow the installer — it only takes about 30 seconds.",
+                "Come back to this tab and click the button below."
+            ];
+            _otherPlatforms = [new("macOS", "macos"), new("Linux", "linux")];
+        }
+    }
 
     private void Reset()
     {
-        _phase = Phase.EnterCode;
-        _digits = new string[6];
-        _codeError = false;
+        _phase        = Phase.EnterCode;
+        _digits       = new string[6];
+        _codeError    = false;
         _errorMessage = "";
-        _launchUri = "";
+        _launchUri    = "";
     }
 }

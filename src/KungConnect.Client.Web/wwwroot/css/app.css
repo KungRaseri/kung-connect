@@ -472,6 +472,27 @@ code {
     text-decoration: none;
 }
 
+/* ── Install steps ── */
+.install-steps {
+    margin: 0;
+    padding: 0 0 0 1.25rem;
+    color: #cbd5e1;
+    line-height: 1.75;
+    font-size: .9rem;
+}
+.install-steps li { margin-bottom: .5rem; }
+.install-steps li:last-child { margin-bottom: 0; }
+.install-steps code {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: .3rem;
+    padding: .1rem .4rem;
+    font-family: monospace;
+    font-size: .85rem;
+    color: #38bdf8;
+}
+.install-steps strong { color: #f1f5f9; }
+
 /* ── Ghost button ── */
 .btn-ghost {
     display: inline-flex;

@@ -27,17 +27,54 @@ public sealed class AuthService(HttpClient http, IJSRuntime js)
     public bool IsAuthenticated => !string.IsNullOrEmpty(_accessToken);
     public bool IsAdmin => _roles?.Contains("admin") ?? false;
 
-    /// <summary>Loads tokens from localStorage into memory. Safe to call multiple times.</summary>
+    /// <summary>Loads tokens from localStorage into memory. Safe to call multiple times.
+    /// If the stored access token is expired it is cleared immediately so that
+    /// <see cref="IsAuthenticated"/> returns false and the layout guard redirects to login.
+    /// </summary>
     public async Task InitializeAsync()
     {
         if (_initialized) return;
         _accessToken = await js.InvokeAsync<string?>("localStorage.getItem", AccessTokenKey);
+
+        if (_accessToken is not null && IsTokenExpired(_accessToken))
+        {
+            // Clear everything — IsAuthenticated will return false and the
+            // DashboardLayout will redirect to /login.
+            await LogoutAsync();
+            return;
+        }
+
         _username    = await js.InvokeAsync<string?>("localStorage.getItem", UsernameKey);
         var rolesJson = await js.InvokeAsync<string?>("localStorage.getItem", RolesKey);
         _roles = rolesJson is not null
             ? JsonSerializer.Deserialize<string[]>(rolesJson)
             : null;
         _initialized = true;
+    }
+
+    /// <summary>
+    /// Decodes the JWT payload (no signature check — we only need the <c>exp</c> claim
+    /// for a client-side freshness guard; the server always re-validates the signature).
+    /// </summary>
+    private static bool IsTokenExpired(string token)
+    {
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length != 3) return true;
+
+            // Base64url → Base64
+            var payload = parts[1]
+                .Replace('-', '+').Replace('_', '/');
+            payload += (payload.Length % 4) switch { 2 => "==", 3 => "=", _ => "" };
+
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("exp", out var exp)) return false;
+
+            return DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64()) <= DateTimeOffset.UtcNow;
+        }
+        catch { return true; }
     }
 
     /// <summary>

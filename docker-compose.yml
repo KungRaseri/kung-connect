@@ -51,6 +51,9 @@ services:
       Relay__TurnPassword:           ${RELAY_TURN_PASSWORD:-}
       Redis__Enabled:                ${REDIS_ENABLED:-false}
       Redis__ConnectionString:       ${REDIS_CONNECTION_STRING:-}
+      Downloads__WindowsUrl:         ${DOWNLOADS_WINDOWS_URL:-}
+      Downloads__MacOsUrl:           ${DOWNLOADS_MACOS_URL:-}
+      Downloads__LinuxUrl:           ${DOWNLOADS_LINUX_URL:-}
       ASPNETCORE_ENVIRONMENT:        ${ASPNETCORE_ENVIRONMENT:-Production}
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:5000/health || exit 1"]
