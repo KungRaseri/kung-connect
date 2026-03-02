@@ -13,6 +13,7 @@ var serverUrl = builder.Configuration["ServerUrl"]
 
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(serverUrl) });
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<JoinSessionService>();
 
 // Make ServerUrl injectable as IConfiguration["ServerUrl"]
 builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>

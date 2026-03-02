@@ -3,6 +3,7 @@
 @inject IJSRuntime JS
 @inject IConfiguration Config
 @inject NavigationManager Nav
+@inject KungConnect.Client.Web.Services.JoinSessionService JoinSvc
 @implements IAsyncDisposable
 
 <PageTitle>KungConnect — Join Session</PageTitle>
@@ -119,8 +120,7 @@
     private string   _downloadUrl    = "/downloads/windows";
     private List<string>   _installSteps   = [];
     private List<Platform> _otherPlatforms = [];
-    private bool           _operatorJoined = false;
-    private HubConnection? _hub;
+    private bool           _operatorJoined => JoinSvc.ConnectionState is "active" or "capturing";
 
     protected override void OnInitialized()
     {
@@ -181,20 +181,13 @@
     {
         try
         {
-            _hub = new HubConnectionBuilder()
-                .WithUrl($"{serverUrl}/hubs/signaling")
-                .WithAutomaticReconnect()
-                .Build();
+            // JoinSessionService manages the full WebRTC lifecycle (offer, answer, ICE, JPEG frames).
+            // Subscribe to state changes so the UI re-renders when WebRTC progresses.
+            JoinSvc.StateChanged += async () => await InvokeAsync(StateHasChanged);
 
-            // Server fires this when the operator's desktop client has connected
-            _hub.On<string>("OperatorJoined", async _ =>
-            {
-                _operatorJoined = true;
-                await InvokeAsync(StateHasChanged);
-            });
+            await JoinSvc.ConnectAsync(serverUrl, code);
 
-            await _hub.StartAsync();
-            await _hub.InvokeAsync("JoinCodeCreate", code);
+            _operatorJoined = JoinSvc.ConnectionState is "active" or "connected" or "capturing";
         }
         catch
         {
@@ -267,15 +260,15 @@
         _codeError      = false;
         _errorMessage   = "";
         _launchUri      = "";
-        _operatorJoined = false;
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_hub is not null)
-        {
-            await _hub.StopAsync();
-            await _hub.DisposeAsync();
-        }
+        // JoinSessionService is scoped — Blazor's DI disposes it automatically,
+        // but we unsubscribe from its event to avoid stale callbacks.
+        JoinSvc.StateChanged -= async () => await InvokeAsync(StateHasChanged);
+
+        // _hub is now owned by JoinSessionService; nothing to dispose here.
+        await ValueTask.CompletedTask;
     }
 }

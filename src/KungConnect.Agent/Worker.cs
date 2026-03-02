@@ -59,12 +59,12 @@ public class Worker(
                 logger.LogWarning("Session {Id}: AutoAcceptSessions=false – implement UI approval.", sessionId);
         });
 
-        conn.On<Guid, string>(SignalingEvents.ReceiveAnswer, (sessionId, sdp) =>
-            logger.LogDebug("SDP answer for session {Id} – TODO: route to RTCPeerConnection", sessionId));
+        conn.On<Guid, string>(SignalingEvents.ReceiveAnswer, (sessionId, _) =>
+            logger.LogDebug("ReceiveAnswer for {Id} — routed by SessionHandlerService", sessionId));
 
         conn.On<Guid, string, string, int?>(SignalingEvents.ReceiveIceCandidate,
-            (sessionId, candidate, sdpMid, sdpMLineIndex) =>
-            logger.LogDebug("ICE candidate for session {Id} – TODO: route to RTCPeerConnection", sessionId));
+            (sessionId, _, _, _) =>
+            logger.LogDebug("ReceiveIceCandidate for {Id} — routed by SessionHandlerService", sessionId));
 
         conn.On<Guid>(SignalingEvents.SessionEnded, sessionId =>
         {

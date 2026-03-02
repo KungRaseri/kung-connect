@@ -17,6 +17,8 @@ public class SdpMessage : SignalMessage
 {
     /// <summary>"offer" or "answer"</summary>
     public string Sdp { get; set; } = string.Empty;
+    /// <summary>Connection ID of the sender (filled in by SignalingService on receive).</summary>
+    public string SenderConnectionId { get; set; } = string.Empty;
 }
 
 /// <summary>WebRTC ICE candidate trickle message.</summary>

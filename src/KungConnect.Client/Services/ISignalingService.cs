@@ -11,15 +11,20 @@ public interface ISignalingService : IAsyncDisposable
 {
     bool IsConnected { get; }
 
-    // Outbound (operator → server → agent)
+    // Outbound (operator → server → agent/browser)
     Task ConnectAsync(string accessToken, CancellationToken ct = default);
     Task DisconnectAsync(CancellationToken ct = default);
-    Task SendOfferAsync(string targetConnectionId, SdpMessage sdp, CancellationToken ct = default);
-    Task SendIceCandidateAsync(string targetConnectionId, IceCandidateMessage ice, CancellationToken ct = default);
+    Task RequestSessionAsync(Guid sessionId, Guid machineId, CancellationToken ct = default);
+    Task SendOfferAsync(string targetConnectionId, Guid sessionId, string sdp, CancellationToken ct = default);
+    Task SendAnswerAsync(string targetConnectionId, Guid sessionId, string sdp, CancellationToken ct = default);
+    Task SendIceCandidateAsync(string targetConnectionId, Guid sessionId, string candidate, string sdpMid, int? sdpMLineIndex, CancellationToken ct = default);
     Task EndSessionAsync(Guid sessionId, CancellationToken ct = default);
 
     // Inbound events (server → operator)
+    event EventHandler<SdpMessage>? OfferReceived;
     event EventHandler<SdpMessage>? AnswerReceived;
     event EventHandler<IceCandidateMessage>? IceCandidateReceived;
     event EventHandler<SessionStateMessage>? SessionStateChanged;
+    event EventHandler<Guid>? SessionApproved;
+    event EventHandler<Guid>? SessionRejected;
 }
