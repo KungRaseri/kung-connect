@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Consistent binary name on all platforms: KungConnect / KungConnect.exe -->
     <AssemblyName>KungConnect</AssemblyName>
+    <!-- Default version for local dev builds. CI/Release overrides with -p:Version=0.0.<count>-<hash> -->
+    <Version>0.0.0-local</Version>
     <!-- app.manifest is a Windows-only concept; skip it for Linux/macOS targets -->
     <ApplicationManifest Condition="'$(RuntimeIdentifier)' == '' OR $(RuntimeIdentifier.StartsWith('win'))">app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>

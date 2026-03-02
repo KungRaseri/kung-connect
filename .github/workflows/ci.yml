@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    tags: ['v*']
   pull_request:
     branches: [main, develop]
 
@@ -46,10 +47,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # needed for rev-list --count
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+
+      - name: Compute version
+        id: ver
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          HASH=$(git rev-parse --short HEAD)
+          echo "semver=0.0.${COUNT}-${HASH}" >> $GITHUB_OUTPUT
 
       - name: Restore
         run: dotnet restore src/KungConnect.Client/KungConnect.Client.csproj
@@ -57,7 +67,8 @@ jobs:
       - name: Build (framework-dependent — validates cross-platform compile)
         run: |
           dotnet build src/KungConnect.Client/KungConnect.Client.csproj \
-            --no-restore -c Release
+            --no-restore -c Release \
+            -p:Version=${{ steps.ver.outputs.semver }}
 
   # ── Validate the Docker image builds correctly ──────────────────────────────
   docker-validate:
