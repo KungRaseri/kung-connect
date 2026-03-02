@@ -80,3 +80,49 @@ jobs:
 
       - name: Build server image (no push)
         run: docker build -f deploy/Dockerfile.server -t kung-connect-server:ci .
+
+  # ── Auto-tag on successful main push ────────────────────────────────────────
+  # Runs only when all other jobs pass AND the event is a push to main
+  # (not a PR, not develop, not a tag push — that would loop).
+  # Pushes a v0.0.<commit-count> tag, which triggers CI again on the tag,
+  # which then triggers the Release workflow.
+  auto-tag:
+    name: Auto-tag for release
+    needs: [build-and-test, client-compile-check, docker-validate]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history needed for rev-list --count
+
+      - name: Compute tag name
+        id: tag
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          echo "name=v0.0.${COUNT}" >> $GITHUB_OUTPUT
+          echo "Tag will be: v0.0.${COUNT}"
+
+      - name: Check tag doesn't already exist
+        id: check
+        run: |
+          if git ls-remote --tags origin "refs/tags/${{ steps.tag.outputs.name }}" \
+              | grep -q "${{ steps.tag.outputs.name }}"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.tag.outputs.name }} already exists — skipping"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.tag.outputs.name }}" \
+            -m "Auto-release ${{ steps.tag.outputs.name }}"
+          git push origin "${{ steps.tag.outputs.name }}"
+          echo "Pushed ${{ steps.tag.outputs.name }}"
