@@ -81,22 +81,23 @@ jobs:
         run: docker build -f deploy/Dockerfile.server -t kung-connect-server:ci .
 
   # ── Auto-tag on successful main push ────────────────────────────────────────
-  # Runs only when all other jobs pass AND the event is a push to main
-  # (not a PR, not develop, not a tag push — that would loop).
-  # Pushes a v0.0.<commit-count> tag, which triggers CI again on the tag,
-  # which then triggers the Release workflow.
+  # Runs only when all other jobs pass AND the event is a push to main.
+  # IMPORTANT: uses PAT_TOKEN (not GITHUB_TOKEN) to push the tag so that
+  # GitHub triggers the Release workflow — pushes made with GITHUB_TOKEN
+  # are intentionally blocked from triggering downstream workflows.
+  # Create a fine-grained PAT with 'Contents: Read and write' and store
+  # it as a repository secret named PAT_TOKEN.
   auto-tag:
     name: Auto-tag for release
     needs: [build-and-test, client-compile-check, docker-validate]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0   # full history needed for rev-list --count
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Compute tag name
         id: tag
