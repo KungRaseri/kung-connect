@@ -67,5 +67,13 @@ public sealed class AuthService : IAuthService, IDisposable
         _http.DefaultRequestHeaders.Authorization = null;
     }
 
+    public void SetTokens(string accessToken, string? refreshToken = null)
+    {
+        _accessToken  = accessToken;
+        _refreshToken = refreshToken;
+        _http.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+    }
+
     public void Dispose() => _http.Dispose();
 }

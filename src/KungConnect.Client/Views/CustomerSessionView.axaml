@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:KungConnect.Client.ViewModels"
+             x:Class="KungConnect.Client.Views.CustomerSessionView"
+             x:DataType="vm:CustomerSessionViewModel">
+
+  <Grid RowDefinitions="*,Auto,*" HorizontalAlignment="Center" Width="440">
+
+    <StackPanel Grid.Row="1" Spacing="20" HorizontalAlignment="Center">
+
+      <!-- Header -->
+      <StackPanel Spacing="4" HorizontalAlignment="Center">
+        <TextBlock Text="KungConnect"
+                   FontSize="26" FontWeight="Bold"
+                   HorizontalAlignment="Center"/>
+        <TextBlock Text="Remote Support Session"
+                   FontSize="13" Opacity="0.55"
+                   HorizontalAlignment="Center"/>
+      </StackPanel>
+
+      <!-- Session code card -->
+      <Border Background="#1E293B" CornerRadius="10" Padding="28,18">
+        <StackPanel Spacing="6" HorizontalAlignment="Center">
+          <TextBlock Text="Your session code"
+                     FontSize="12" Opacity="0.55"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding JoinCode}"
+                     FontSize="38" FontWeight="Bold" LetterSpacing="8"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Status -->
+      <StackPanel Spacing="6" HorizontalAlignment="Center">
+        <ProgressBar IsIndeterminate="True" Width="180" Height="3"
+                     IsVisible="{Binding !IsBusy}"/>
+        <TextBlock Text="{Binding ConnectionStatus}"
+                   HorizontalAlignment="Center" Opacity="0.7"/>
+      </StackPanel>
+
+      <!-- Info note -->
+      <TextBlock Text="A support agent will be able to see your screen. Close this window at any time to end the session."
+                 FontSize="11" Opacity="0.45"
+                 TextWrapping="Wrap" HorizontalAlignment="Center"
+                 TextAlignment="Center" MaxWidth="360"/>
+
+      <!-- Error -->
+      <TextBlock Text="{Binding ErrorMessage}"
+                 Foreground="Red" TextWrapping="Wrap"
+                 HorizontalAlignment="Center"
+                 IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+      <!-- Disconnect -->
+      <Button Content="End Session"
+              HorizontalAlignment="Center"
+              Command="{Binding DisconnectCommand}"
+              Margin="0,4,0,0"/>
+
+    </StackPanel>
+  </Grid>
+
+</UserControl>

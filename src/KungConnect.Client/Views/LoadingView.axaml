@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:KungConnect.Client.ViewModels"
+             x:Class="KungConnect.Client.Views.LoadingView"
+             x:DataType="vm:LoadingViewModel">
+
+  <Grid>
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+      <ProgressBar IsIndeterminate="True" Width="220" Height="4"/>
+      <TextBlock Text="{Binding Message}"
+                 HorizontalAlignment="Center"
+                 FontSize="14" Opacity="0.65"/>
+      <TextBlock Text="{Binding ErrorMessage}"
+                 HorizontalAlignment="Center"
+                 Foreground="Red" TextWrapping="Wrap"
+                 IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+    </StackPanel>
+  </Grid>
+
+</UserControl>

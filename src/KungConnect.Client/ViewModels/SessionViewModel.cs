@@ -75,6 +75,31 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
         finally { IsBusy = false; }
     }
 
+    /// <summary>
+    /// Starts an ad-hoc session where the target is already connected via a
+    /// browser join code.  Skips <c>RequestSession</c> (the session was initiated
+    /// server-side) and proceeds directly to the WebRTC handshake.
+    /// </summary>
+    public async Task StartAdHocAsync(string targetConnectionId)
+    {
+        IsBusy = true;
+        ClearMessages();
+        try
+        {
+            // Phase 2: create RTCPeerConnection, generate SDP offer, and call:
+            //   await _signaling.SendOfferAsync(targetConnectionId, sdpOffer, _cts.Token);
+            // For now we mark the session active so the UI reflects a live session.
+            State = SessionState.Active;
+            StatusMessage = $"Ad hoc session ready — waiting for WebRTC negotiation with {targetConnectionId}…";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Ad hoc session failed: {ex.Message}";
+        }
+        finally { IsBusy = false; }
+        await Task.CompletedTask;
+    }
+
     // Receives decoded JPEG frame bytes forwarded by the RTCPeerConnection data channel
     // (Phase 2: the actual WebRTC decode pipeline posts here via a callback)
     public void ReceiveFrame(byte[] jpegBytes)
