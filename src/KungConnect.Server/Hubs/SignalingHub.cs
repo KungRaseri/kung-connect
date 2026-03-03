@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using KungConnect.Server.Data;
+using KungConnect.Server.Data.Entities;
 using KungConnect.Server.Services;
 using KungConnect.Shared.Constants;
 using KungConnect.Shared.Enums;
@@ -45,29 +46,52 @@ public class SignalingHub(
         string? osType       = null,
         string? agentVersion = null)
     {
-        var machine = await machineRegistry.AuthenticateAsync(machineSecret);
-        if (machine is null)
+        if (string.IsNullOrWhiteSpace(machineSecret))
         {
-            await Clients.Caller.SendAsync(SignalingEvents.Error, "Invalid machine secret");
+            await Clients.Caller.SendAsync(SignalingEvents.Error, "Machine secret is required");
             return;
         }
 
-        // Persist system info supplied by the agent on first connect / reconnect
-        var dbMachine = await db.Machines.FindAsync(machine.Id);
-        if (dbMachine is not null)
+        var machine = await machineRegistry.AuthenticateAsync(machineSecret);
+
+        if (machine is null)
         {
-            if (!string.IsNullOrEmpty(hostname))     dbMachine.Hostname     = hostname;
-            if (!string.IsNullOrEmpty(agentVersion)) dbMachine.AgentVersion = agentVersion;
+            // ── Self-registration: first time this agent has connected ──
+            var alias = !string.IsNullOrEmpty(hostname) ? hostname : "Unknown";
+            machine = new MachineEntity
+            {
+                // OwnerId intentionally null — admin can claim/rename from dashboard
+                Alias              = alias,
+                Hostname           = hostname ?? string.Empty,
+                MachineSecret      = machineSecret,
+                AutoAcceptSessions = true,
+                AgentVersion       = agentVersion ?? string.Empty,
+            };
             if (!string.IsNullOrEmpty(osType) &&
-                Enum.TryParse<Shared.Enums.OsType>(osType, ignoreCase: true, out var parsedOs))
-                dbMachine.OsType = parsedOs;
+                Enum.TryParse<OsType>(osType, ignoreCase: true, out var parsedOs))
+                machine.OsType = parsedOs;
+
+            db.Machines.Add(machine);
             await db.SaveChangesAsync();
+            logger.LogInformation("Machine self-registered: '{Alias}' from {Host}", machine.Alias, hostname);
+        }
+        else
+        {
+            // ── Reconnect: update system info ──
+            var dbMachine = await db.Machines.FindAsync(machine.Id);
+            if (dbMachine is not null)
+            {
+                if (!string.IsNullOrEmpty(hostname))     dbMachine.Hostname     = hostname;
+                if (!string.IsNullOrEmpty(agentVersion)) dbMachine.AgentVersion = agentVersion;
+                if (!string.IsNullOrEmpty(osType) &&
+                    Enum.TryParse<OsType>(osType, ignoreCase: true, out var parsedOs))
+                    dbMachine.OsType = parsedOs;
+                await db.SaveChangesAsync();
+            }
         }
 
         await machineRegistry.SetOnlineAsync(machine.Id, Context.ConnectionId);
         await Groups.AddToGroupAsync(Context.ConnectionId, $"machine:{machine.Id}");
-
-        // Notify all operators watching this machine
         await Clients.Others.SendAsync(SignalingEvents.MachineStatusChanged, machine.Id, "Online");
     }
 

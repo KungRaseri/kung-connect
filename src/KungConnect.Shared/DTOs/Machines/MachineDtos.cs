@@ -9,6 +9,9 @@ public record ProvisionMachineRequest(string Alias);
 /// <summary>Returned after provisioning. <see cref="ConfigSnippet"/> is ready to paste into the agent's appsettings.json.</summary>
 public record ProvisionMachineResponse(Guid MachineId, string Secret, string ConfigSnippet);
 
+/// <summary>Claim an unowned self-registered machine and optionally rename it.</summary>
+public record ClaimMachineRequest(string? Alias);
+
 public record RegisterMachineRequest(
     string Alias,
     string Hostname,

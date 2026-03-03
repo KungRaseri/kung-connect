@@ -22,7 +22,8 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
     public async Task<ActionResult<IEnumerable<MachineDto>>> GetAll()
     {
         var machines = await db.Machines
-            .Where(m => User.IsInRole(Roles.Admin) || m.OwnerId == CurrentUserId)
+            .Where(m => User.IsInRole(Roles.Admin)
+                     || m.OwnerId == CurrentUserId)
             .ToListAsync();
 
         return Ok(machines.Select(m => new MachineDto(
@@ -118,6 +119,24 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
         db.Machines.Remove(machine);
         await db.SaveChangesAsync();
         return NoContent();
+    }
+
+    /// <summary>Claim an unowned self-registered machine and optionally rename it.</summary>
+    [HttpPost("{id:guid}/claim")]
+    public async Task<IActionResult> Claim(Guid id, [FromBody] ClaimMachineRequest request)
+    {
+        var machine = await db.Machines.FindAsync(id);
+        if (machine is null) return NotFound();
+        if (!User.IsInRole(Roles.Admin) && machine.OwnerId is not null && machine.OwnerId != CurrentUserId)
+            return Forbid();
+
+        machine.OwnerId = CurrentUserId;
+        if (!string.IsNullOrWhiteSpace(request.Alias))
+            machine.Alias = request.Alias.Trim();
+        await db.SaveChangesAsync();
+
+        return Ok(new MachineDto(machine.Id, machine.Alias, machine.Hostname,
+            machine.OsType, machine.Status, machine.AgentVersion, machine.LastSeen));
     }
 
     private bool CanAccess(MachineEntity machine) =>

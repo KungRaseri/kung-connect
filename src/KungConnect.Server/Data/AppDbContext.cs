@@ -26,7 +26,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(m => m.Owner)
              .WithMany(u => u.Machines)
              .HasForeignKey(m => m.OwnerId)
-             .OnDelete(DeleteBehavior.Cascade);
+             .IsRequired(false)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<SessionEntity>(e =>

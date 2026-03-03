@@ -5,7 +5,8 @@ namespace KungConnect.Server.Data.Entities;
 public class MachineEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid OwnerId { get; set; }
+    /// <summary>Null for self-registered agents; set when provisioned from the dashboard or claimed by an admin.</summary>
+    public Guid? OwnerId { get; set; }
     public string Alias { get; set; } = string.Empty;
     public string Hostname { get; set; } = string.Empty;
     public OsType OsType { get; set; }
@@ -20,6 +21,6 @@ public class MachineEntity
     public DateTimeOffset LastSeen { get; set; } = DateTimeOffset.UtcNow;
 
     // Navigation
-    public UserEntity Owner { get; set; } = null!;
+    public UserEntity? Owner { get; set; }
     public ICollection<SessionEntity> Sessions { get; set; } = [];
 }

@@ -8,8 +8,9 @@ public class AgentOptions
     public string MachineAlias { get; set; } = Environment.MachineName;
 
     /// <summary>
-    /// Secret used to authenticate this agent with the server.
-    /// Copy from the dashboard when provisioning via 'Add Machine'.
+    /// Unique identity secret for this agent.
+    /// Auto-generated on first run and persisted to appsettings.json.
+    /// Do not change after initial registration — the server uses this to identify the machine.
     /// </summary>
     public string MachineSecret { get; set; } = string.Empty;
     public bool AutoAcceptSessions { get; set; } = true;
