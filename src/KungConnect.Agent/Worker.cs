@@ -23,23 +23,17 @@ public class Worker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (string.IsNullOrWhiteSpace(_opts.ServerUrl))
-        {
-            logger.LogCritical("Agent.ServerUrl is not configured. Set it in appsettings.json.");
-            return;
-        }
-
         // First run: generate and persist a stable machine identity.
-        // The server will create a machine record the first time this secret is seen.
+        // The server upserts a machine record the first time this secret is seen.
         if (string.IsNullOrWhiteSpace(_opts.MachineSecret))
         {
-            var secret = Guid.NewGuid().ToString("N"); // 32-char hex
-            logger.LogInformation("First run — generating machine identity and persisting to appsettings.json.");
+            var secret = Guid.NewGuid().ToString("N"); // 32-char hex, no hyphens
+            logger.LogInformation("Generating machine identity...");
             PersistMachineSecret(secret);
             _opts.MachineSecret = secret;
         }
 
-        logger.LogInformation("KungConnect Agent starting. Server: {Url}", _opts.ServerUrl);
+        logger.LogInformation("Connecting to {Url}", _opts.ServerUrl);
 
         await signalingClient.StartAsync(stoppingToken);
         RegisterHubHandlers(stoppingToken);

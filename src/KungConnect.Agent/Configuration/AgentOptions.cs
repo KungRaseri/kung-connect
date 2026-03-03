@@ -4,7 +4,10 @@ public class AgentOptions
 {
     public const string Section = "Agent";
 
-    public string ServerUrl { get; set; } = "https://localhost:5001";
+    /// <summary>Placeholder written to appsettings.json on first install — triggers the setup wizard.</summary>
+    public const string DefaultServerUrl = "https://localhost:5001";
+
+    public string ServerUrl { get; set; } = DefaultServerUrl;
     public string MachineAlias { get; set; } = Environment.MachineName;
 
     /// <summary>
