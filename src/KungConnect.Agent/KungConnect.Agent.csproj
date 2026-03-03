@@ -11,6 +11,8 @@
   <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-windows'">
     <OutputType>WinExe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- Required when cross-compiling the windows TFM from a non-Windows host (e.g. CI on ubuntu-latest) -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <!-- Linux / macOS: run as a headless background service -->
