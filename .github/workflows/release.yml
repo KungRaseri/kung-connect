@@ -1,10 +1,16 @@
 name: Release
 
-# Triggers when a v* tag is pushed — in practice this only happens via the
-# auto-tag job in ci.yml, which requires every CI check to pass first.
+# Triggers automatically when a v* tag is pushed (via the auto-tag job in ci.yml).
+# Can also be run manually from the Actions tab to create an immediate release.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version_override:
+        description: 'Version string (e.g. 0.0.42-manual). Leave blank to auto-compute from commit count.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -26,10 +32,15 @@ jobs:
       - name: Compute version
         id: ver
         run: |
-          COUNT=$(git rev-list --count HEAD)
-          HASH=$(git rev-parse --short HEAD)
-          echo "semver=0.0.${COUNT}-${HASH}" >> $GITHUB_OUTPUT
-          echo "Computed version: 0.0.${COUNT}-${HASH}"
+          if [ -n "${{ github.event.inputs.version_override }}" ]; then
+            SEMVER="${{ github.event.inputs.version_override }}"
+          else
+            COUNT=$(git rev-list --count HEAD)
+            HASH=$(git rev-parse --short HEAD)
+            SEMVER="0.0.${COUNT}-${HASH}"
+          fi
+          echo "semver=${SEMVER}" >> $GITHUB_OUTPUT
+          echo "Computed version: ${SEMVER}"
 
   # ── Build the desktop client for every supported platform ───────────────────
   build-client:
@@ -170,6 +181,7 @@ jobs:
   # ── Build & push the server Docker image to GHCR ───────────────────────────
   docker:
     name: Docker — build & push
+    needs: [version]
     runs-on: ubuntu-latest
 
     steps:
@@ -190,6 +202,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ needs.version.outputs.semver }}
             type=raw,value=latest
 
       - name: Set up Docker Buildx
@@ -209,7 +222,7 @@ jobs:
   # ── Create GitHub Release with all artifacts ────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [build-client, build-agent, docker]
+    needs: [build-client, build-agent, docker, version]
     runs-on: ubuntu-latest
 
     steps:
@@ -230,10 +243,20 @@ jobs:
       - name: List artifacts (debug)
         run: ls -lR artifacts/
 
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=v${{ needs.version.outputs.semver }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          tag_name: ${{ steps.tag.outputs.name }}
+          generate_release_notes: ${{ github.event_name != 'workflow_dispatch' }}
           fail_on_unmatched_files: true
           files: |
             artifacts/KungConnect-*.zip
@@ -244,7 +267,7 @@ jobs:
             ## Docker image
 
             ```bash
-            docker pull ghcr.io/${{ github.repository_owner }}/kung-connect-server:${{ github.ref_name }}
+            docker pull ghcr.io/${{ github.repository_owner }}/kung-connect-server:${{ steps.tag.outputs.name }}
             ```
 
             ## Setting download URLs
