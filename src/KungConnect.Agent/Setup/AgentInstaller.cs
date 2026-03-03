@@ -39,8 +39,13 @@ internal static class AgentInstaller
         Println();
         PrintLine(ConsoleColor.Green, "  ✓ Configuration saved.");
         Println();
+#if WINDOWS
         Console.WriteLine("  The agent will now start in the system tray.");
         Console.WriteLine("  Right-click the tray icon at any time to check status or exit.");
+#else
+        Console.WriteLine("  The agent is now configured.");
+        Console.WriteLine("  Run it as a background service (systemd / launchd) or start it manually.");
+#endif
         Println();
         Console.Write("  Press any key to continue...");
         Console.ReadKey(intercept: true);

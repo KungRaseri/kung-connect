@@ -1,3 +1,4 @@
+#if WINDOWS
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -151,3 +152,4 @@ internal sealed class TrayApplicationContext : ApplicationContext
         DestroyIcon(handle);
     }
 }
+#endif

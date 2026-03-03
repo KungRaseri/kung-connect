@@ -123,21 +123,25 @@ jobs:
             bin: KungConnect.Agent.exe
             pkg: zip
             label: Windows (x64)
+            tfm: net9.0-windows
 
           - rid: linux-x64
             bin: KungConnect.Agent
             pkg: tar
             label: Linux (x64)
+            tfm: net9.0
 
           - rid: linux-arm64
             bin: KungConnect.Agent
             pkg: tar
             label: Linux (ARM64)
+            tfm: net9.0
 
           - rid: osx-arm64
             bin: KungConnect.Agent
             pkg: zip
             label: macOS (Apple Silicon)
+            tfm: net9.0
 
     steps:
       - uses: actions/checkout@v4
@@ -150,6 +154,7 @@ jobs:
         run: |
           dotnet publish src/KungConnect.Agent/KungConnect.Agent.csproj \
             -c Release \
+            -f ${{ matrix.tfm }} \
             -r ${{ matrix.rid }} \
             --self-contained true \
             -p:PublishSingleFile=true \

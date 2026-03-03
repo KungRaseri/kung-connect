@@ -1,3 +1,4 @@
+#if WINDOWS
 using System.Runtime.InteropServices;
 
 namespace KungConnect.Agent;
@@ -35,3 +36,4 @@ internal static class NativeConsole
     /// <summary>Detaches (and closes) the current console window.</summary>
     public static void Free() => FreeConsole();
 }
+#endif

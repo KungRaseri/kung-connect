@@ -1,12 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <OutputType>WinExe</OutputType>
-    <UseWindowsForms>true</UseWindowsForms>
+    <TargetFrameworks>net9.0-windows;net9.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-KungConnect.Agent-19bad793-c5ea-4b27-bd03-352669f23b87</UserSecretsId>
+  </PropertyGroup>
+
+  <!-- Windows: run windowless with WinForms system tray -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0-windows'">
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <!-- Linux / macOS: run as a headless background service -->
+  <PropertyGroup Condition="'$(TargetFramework)' != 'net9.0-windows'">
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>

@@ -2,25 +2,26 @@ using KungConnect.Agent;
 using KungConnect.Agent.Configuration;
 using KungConnect.Agent.Services;
 using KungConnect.Agent.Setup;
+#if WINDOWS
 using KungConnect.Agent.Tray;
 using System.Windows.Forms;
+#endif
 
 namespace KungConnect.Agent;
 
 internal static class Program
 {
+#if WINDOWS
     [STAThread]
+#endif
     static void Main(string[] args)
     {
         // ── First-run detection ───────────────────────────────────────────────
-        // Read config before building the host so we can run the interactive setup
-        // wizard if the server URL hasn't been configured yet.
-        // The wizard writes appsettings.json; the host then picks up the new values.
         var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
 
         var preConfig = new ConfigurationBuilder()
             .AddJsonFile(settingsPath, optional: true)
-            .AddEnvironmentVariables()     // picks up Agent__ServerUrl etc.
+            .AddEnvironmentVariables()
             .Build();
 
         var configuredUrl = preConfig["Agent:ServerUrl"] ?? "";
@@ -29,6 +30,7 @@ internal static class Program
 
         if (needsSetup)
         {
+#if WINDOWS
             // WinExe has no console by default — allocate one for the interactive wizard.
             NativeConsole.Alloc();
             try
@@ -39,6 +41,16 @@ internal static class Program
             {
                 NativeConsole.Free();
             }
+#else
+            if (Console.IsInputRedirected)
+            {
+                // Running as a service / in a container — can't show interactive prompts.
+                Console.Error.WriteLine("[KungConnect Agent] Agent.ServerUrl is not configured.");
+                Console.Error.WriteLine("Set Agent__ServerUrl via environment variable or appsettings.json, then restart.");
+                return;
+            }
+            AgentInstaller.RunAsync(settingsPath).GetAwaiter().GetResult();
+#endif
         }
 
         // ── Host ──────────────────────────────────────────────────────────────
@@ -53,23 +65,23 @@ internal static class Program
         builder.Services.AddSingleton<SessionHandlerService>();
         builder.Services.AddHostedService<Worker>();
 
-        // Suppress the generic hosting messages that look like a web-server starting.
         builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
 
         var host = builder.Build();
 
-        // Start Worker and all hosted services in the background.
-        // StartAsync returns as soon as each IHostedService.StartAsync has been called.
+#if WINDOWS
+        // Start Worker in the background, then hand control to WinForms for the tray loop.
         host.StartAsync().GetAwaiter().GetResult();
 
-        // ── System tray ───────────────────────────────────────────────────────
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         Application.Run(new TrayApplicationContext(host, agentStatus));
 
-        // Application.Run returned (user clicked Exit or host stopped itself).
-        // Ensure the host is fully wound down before the process exits.
         host.StopAsync().GetAwaiter().GetResult();
+#else
+        // Linux / macOS: run as a normal foreground process / daemon.
+        host.Run();
+#endif
     }
 }
 
