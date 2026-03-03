@@ -10,7 +10,6 @@ public static class SignalingEvents
     public const string SendOffer        = "SendOffer";
     public const string SendAnswer       = "SendAnswer";
     public const string SendIceCandidate = "SendIceCandidate";
-    public const string AgentEnroll      = "AgentEnroll";
     public const string AgentRegister    = "AgentRegister";
     public const string AgentHeartbeat   = "AgentHeartbeat";
     public const string RequestSession   = "RequestSession";

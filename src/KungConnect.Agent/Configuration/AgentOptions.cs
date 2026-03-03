@@ -8,15 +8,8 @@ public class AgentOptions
     public string MachineAlias { get; set; } = Environment.MachineName;
 
     /// <summary>
-    /// One-time registration token set by the server admin (Server__AgentRegistrationToken).
-    /// Used on first run to self-enroll. Cleared from config after successful enrollment.
-    /// </summary>
-    public string RegistrationToken { get; set; } = string.Empty;
-
-    /// <summary>
     /// Secret used to authenticate this agent with the server.
-    /// Populated automatically after self-enrollment, or copy from the dashboard
-    /// 'Add Machine' provisioning flow.
+    /// Copy from the dashboard when provisioning via 'Add Machine'.
     /// </summary>
     public string MachineSecret { get; set; } = string.Empty;
     public bool AutoAcceptSessions { get; set; } = true;

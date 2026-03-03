@@ -1,6 +1,5 @@
 using KungConnect.Agent.Configuration;
 using KungConnect.Shared.Constants;
-using KungConnect.Shared.Signaling;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,9 +19,6 @@ public interface ISignalingClientService : IAsyncDisposable
     /// <summary>Opens the SignalR connection. Does NOT register the agent — call <see cref="RegisterAsync"/> next.</summary>
     Task StartAsync(CancellationToken ct = default);
     Task StopAsync(CancellationToken ct = default);
-
-    /// <summary>Self-enrolls using the registration token. Returns the machine secret to persist.</summary>
-    Task<string> EnrollAsync(string registrationToken, CancellationToken ct = default);
 
     /// <summary>Registers (or re-registers after reconnect) using the stored machine secret.</summary>
     Task RegisterAsync(CancellationToken ct = default);
@@ -62,31 +58,6 @@ public class SignalingClientService(
 
         await _connection.StartAsync(ct);
         logger.LogInformation("SignalR connected to {Url}", hubUrl);
-        // Caller (Worker) is responsible for calling EnrollAsync or RegisterAsync
-    }
-
-    /// <inheritdoc/>
-    public async Task<string> EnrollAsync(string registrationToken, CancellationToken ct = default)
-    {
-        if (_connection is null) throw new InvalidOperationException("Call StartAsync first.");
-
-        var hostname = string.IsNullOrWhiteSpace(_opts.MachineAlias)
-            ? Environment.MachineName
-            : _opts.MachineAlias;
-
-        var osType = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "Windows"
-                   : RuntimeInformation.IsOSPlatform(OSPlatform.OSX)     ? "MacOs"
-                   : "Linux";
-
-        var version = typeof(SignalingClientService).Assembly
-            .GetName().Version?.ToString(3) ?? "0.0.0";
-
-        var secret = await _connection.InvokeAsync<string>(
-            SignalingEvents.AgentEnroll, registrationToken, hostname, hostname, osType, version, ct);
-
-        logger.LogInformation(
-            "Enrolled: host={Host}, os={Os}, version={Ver}", hostname, osType, version);
-        return secret;
     }
 
     /// <inheritdoc/>

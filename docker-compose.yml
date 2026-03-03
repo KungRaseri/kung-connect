@@ -42,7 +42,6 @@ services:
       ConnectionStrings__DefaultConnection: ${KUNGCONNECT_CONNECTION_STRING:?Set KUNGCONNECT_CONNECTION_STRING in .env}
       Server__Mode:                  ${KUNGCONNECT_SERVER_MODE:-SingleTenant}
       Server__AllowSelfRegistration: ${KUNGCONNECT_ALLOW_SELF_REGISTRATION:-true}
-      Server__AgentRegistrationToken: ${KUNGCONNECT_AGENT_REGISTRATION_TOKEN:-}
       Jwt__Secret:                   ${KUNGCONNECT_JWT_SECRET:?Set KUNGCONNECT_JWT_SECRET in .env}
       Jwt__Issuer:                   ${KUNGCONNECT_JWT_ISSUER:-KungConnect}
       Jwt__Audience:                 ${KUNGCONNECT_JWT_AUDIENCE:-KungConnect}
@@ -82,8 +81,7 @@ services:
     environment:
       Agent__ServerUrl:          http://server:5000
       Agent__MachineAlias:       ${AGENT_ALIAS:-DockerAgent}
-      Agent__MachineSecret:      ${AGENT_SECRET:-}
-      Agent__RegistrationToken:  ${AGENT_REGISTRATION_TOKEN:-}
+      Agent__MachineSecret:      ${AGENT_SECRET:?Set AGENT_SECRET in .env}
       Agent__AutoAcceptSessions: ${AGENT_AUTO_ACCEPT:-false}
 
   # ── coturn TURN relay (optional — profile: relay) ────────────────────────────
