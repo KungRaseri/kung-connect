@@ -39,13 +39,40 @@ internal static class AgentInstaller
         Println();
         PrintLine(ConsoleColor.Green, "  ✓ Configuration saved.");
         Println();
+
+        // ── Service install ───────────────────────────────────────────────────
+        await PromptServiceInstallAsync();
+    }
+
+    private static async Task PromptServiceInstallAsync()
+    {
+        Console.Write("  Install as a background service (starts automatically)? [Y/n]: ");
+        var answer = (Console.ReadLine() ?? "").Trim().ToUpperInvariant();
+        if (answer == "N")
+        {
+            Println();
 #if WINDOWS
-        Console.WriteLine("  The agent will now start in the system tray.");
-        Console.WriteLine("  Right-click the tray icon at any time to check status or exit.");
+            Console.WriteLine("  Skipped — the agent will start in the system tray when launched manually.");
 #else
-        Console.WriteLine("  The agent is now configured.");
-        Console.WriteLine("  Run it as a background service (systemd / launchd) or start it manually.");
+            Console.WriteLine("  Skipped — start the agent manually or set up a service later.");
 #endif
+            Println();
+            Console.Write("  Press any key to continue...");
+            Console.ReadKey(intercept: true);
+            Println();
+            return;
+        }
+
+        Console.Write("  Installing service... ");
+        var exePath = Environment.ProcessPath
+                   ?? Path.Combine(AppContext.BaseDirectory, "KungConnect.Agent");
+        var result = await ServiceInstaller.InstallAsync(exePath);
+
+        if (result.Success)
+            PrintLine(ConsoleColor.Green,  $"✓  {result.Message}");
+        else
+            PrintLine(ConsoleColor.Yellow, $"✗  {result.Message}");
+
         Println();
         Console.Write("  Press any key to continue...");
         Console.ReadKey(intercept: true);

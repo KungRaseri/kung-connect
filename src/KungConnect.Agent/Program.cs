@@ -4,6 +4,7 @@ using KungConnect.Agent.Services;
 using KungConnect.Agent.Setup;
 #if WINDOWS
 using KungConnect.Agent.Tray;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using System.Windows.Forms;
 #endif
 
@@ -67,10 +68,24 @@ internal static class Program
 
         builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
 
+#if WINDOWS
+        builder.Services.AddWindowsService(o => o.ServiceName = "KungConnect Agent");
+#else
+        builder.Services.AddSystemd();
+#endif
+
         var host = builder.Build();
 
 #if WINDOWS
-        // Start Worker in the background, then hand control to WinForms for the tray loop.
+        // When running as a Windows Service (Session 0) there is no desktop,
+        // so skip WinForms entirely and let the host run its own lifetime loop.
+        if (WindowsServiceHelpers.IsWindowsService())
+        {
+            host.Run();
+            return;
+        }
+
+        // Interactive session — start in the background and show the tray icon.
         host.StartAsync().GetAwaiter().GetResult();
 
         Application.EnableVisualStyles();
