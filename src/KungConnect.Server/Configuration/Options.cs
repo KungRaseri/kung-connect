@@ -11,6 +11,13 @@ public class ServerOptions
     public string Mode { get; set; } = "SingleTenant";
 
     public bool AllowSelfRegistration { get; set; } = false;
+
+    /// <summary>
+    /// Shared token agents must present to self-enroll.
+    /// Set this in appsettings / env (Server__AgentRegistrationToken).
+    /// If empty, agent self-enrollment is disabled — machines must be provisioned from the dashboard.
+    /// </summary>
+    public string AgentRegistrationToken { get; set; } = string.Empty;
 }
 
 public class JwtOptions

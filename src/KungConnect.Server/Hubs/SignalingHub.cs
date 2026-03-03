@@ -1,11 +1,15 @@
 using System.Security.Claims;
+using KungConnect.Server.Configuration;
 using KungConnect.Server.Data;
+using KungConnect.Server.Data.Entities;
 using KungConnect.Server.Services;
 using KungConnect.Shared.Constants;
+using KungConnect.Shared.Enums;
 using KungConnect.Shared.Signaling;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace KungConnect.Server.Hubs;
 
@@ -18,6 +22,7 @@ public class SignalingHub(
     AppDbContext db,
     IMachineRegistry machineRegistry,
     IJoinCodeService joinCodeService,
+    IOptions<ServerOptions> serverOptions,
     ILogger<SignalingHub> logger) : Hub
 {
     // ── Connection lifecycle ─────────────────────────────────────────────────
@@ -77,6 +82,73 @@ public class SignalingHub(
         if (machine is null) return;
         machine.LastSeen = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
+    }
+
+    // ── Agent self-enrollment ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by an agent that has a registration token but no machine secret.
+    /// Validates the token, creates (or returns) a machine record, and returns
+    /// the per-machine secret the agent should persist for future connections.
+    /// </summary>
+    [AllowAnonymous]
+    public async Task<string> AgentEnroll(
+        string registrationToken,
+        string alias,
+        string hostname,
+        string? osType       = null,
+        string? agentVersion = null)
+    {
+        var token = serverOptions.Value.AgentRegistrationToken;
+        if (string.IsNullOrWhiteSpace(token))
+            throw new HubException("Agent self-enrollment is disabled on this server.");
+
+        if (registrationToken != token)
+            throw new HubException("Invalid registration token.");
+
+        // Idempotent: if a machine with this alias+hostname already exists, return its secret
+        var existing = await db.Machines
+            .FirstOrDefaultAsync(m => m.Alias == alias && m.Hostname == hostname);
+
+        if (existing is not null)
+        {
+            logger.LogInformation("Re-enrollment: machine '{Alias}' ({Host}) already exists", alias, hostname);
+            await machineRegistry.SetOnlineAsync(existing.Id, Context.ConnectionId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"machine:{existing.Id}");
+            await Clients.Others.SendAsync(SignalingEvents.MachineStatusChanged, existing.Id, "Online");
+            return existing.MachineSecret;
+        }
+
+        // Find the first admin user to own the enrolled machine
+        var owner = await db.Users
+            .FirstOrDefaultAsync(u => u.Roles.Contains(Shared.Constants.Roles.Admin));
+        if (owner is null)
+            throw new HubException("No admin user found. Complete the server setup wizard first.");
+
+        var secret  = Guid.NewGuid().ToString("N"); // 32-char hex
+        var machine = new MachineEntity
+        {
+            OwnerId       = owner.Id,
+            Alias         = alias,
+            Hostname      = hostname,
+            MachineSecret = secret,
+            AutoAcceptSessions = true,
+            AgentVersion  = agentVersion ?? string.Empty,
+        };
+
+        if (!string.IsNullOrEmpty(osType) &&
+            Enum.TryParse<OsType>(osType, ignoreCase: true, out var parsedOs))
+            machine.OsType = parsedOs;
+
+        db.Machines.Add(machine);
+        await db.SaveChangesAsync();
+
+        await machineRegistry.SetOnlineAsync(machine.Id, Context.ConnectionId);
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"machine:{machine.Id}");
+        await Clients.Others.SendAsync(SignalingEvents.MachineStatusChanged, machine.Id, "Online");
+
+        logger.LogInformation("Machine '{Alias}' self-enrolled from {Host}", alias, hostname);
+        return secret;
     }
 
     // ── Session approval flow ────────────────────────────────────────────────
