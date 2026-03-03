@@ -14,8 +14,9 @@ namespace KungConnect.Server.Hubs;
 /// <summary>
 /// Central SignalR hub that routes WebRTC signaling between Clients and Agents,
 /// and also handles agentless join-code sessions (browser targets).
+/// Connections are unauthenticated at the transport level — individual methods
+/// enforce their own auth requirements via [Authorize] / [AllowAnonymous].
 /// </summary>
-[Authorize]
 public class SignalingHub(
     AppDbContext db,
     IMachineRegistry machineRegistry,

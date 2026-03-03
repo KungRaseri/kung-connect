@@ -33,29 +33,55 @@ public class Worker(
             _opts.MachineSecret = secret;
         }
 
-        logger.LogInformation("Connecting to {Url}", _opts.ServerUrl);
-
-        await signalingClient.StartAsync(stoppingToken);
-        RegisterHubHandlers(stoppingToken);
-        await signalingClient.RegisterAsync(stoppingToken);
+        var backoff = new[] { 5, 10, 30, 60, 120 };
+        var attempt = 0;
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                if (signalingClient.IsConnected)
-                    await signalingClient.Connection.InvokeAsync(
-                        SignalingEvents.AgentHeartbeat, _opts.MachineSecret, stoppingToken);
+                logger.LogInformation("Connecting to {Url}", _opts.ServerUrl);
+                await signalingClient.StartAsync(stoppingToken);
+                RegisterHubHandlers(stoppingToken);
+                await signalingClient.RegisterAsync(stoppingToken);
+
+                attempt = 0; // reset backoff on successful connect
+
+                // ── Heartbeat loop ────────────────────────────────────────────
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        if (signalingClient.IsConnected)
+                            await signalingClient.Connection.InvokeAsync(
+                                SignalingEvents.AgentHeartbeat, _opts.MachineSecret, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Heartbeat failed");
+                    }
+
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break; // clean shutdown
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Heartbeat failed");
-            }
+                var wait = backoff[Math.Min(attempt++, backoff.Length - 1)];
+                logger.LogError(ex, "Connection failed. Retrying in {Sec}s...", wait);
 
-            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                try { await Task.Delay(TimeSpan.FromSeconds(wait), stoppingToken); }
+                catch (OperationCanceledException) { break; }
+
+                // Rebuild the connection for the next attempt
+                try { await signalingClient.StopAsync(CancellationToken.None); } catch { }
+            }
         }
 
-        await signalingClient.StopAsync(stoppingToken);
+        await signalingClient.StopAsync(CancellationToken.None);
     }
 
     private void PersistMachineSecret(string secret)
