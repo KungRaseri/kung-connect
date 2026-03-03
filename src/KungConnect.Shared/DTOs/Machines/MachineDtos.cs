@@ -33,3 +33,21 @@ public record MachineDto(
     public static MachineDto FromInfo(MachineInfo m) =>
         new(m.Id, m.Alias, m.Hostname, m.OsType, m.Status, m.AgentVersion, m.LastSeen);
 }
+
+/// <summary>Full detail view of a machine, including secret and config snippet. Only returned to authenticated owners/admins.</summary>
+public record MachineDetailDto(
+    Guid Id,
+    string Alias,
+    string Hostname,
+    OsType OsType,
+    MachineStatus Status,
+    string AgentVersion,
+    DateTimeOffset LastSeen,
+    DateTimeOffset RegisteredAt,
+    string MachineSecret,
+    bool AutoAcceptSessions,
+    bool IsClaimed,
+    string ConfigSnippet);
+
+/// <summary>Payload for PATCH /api/machines/{id} — rename a machine.</summary>
+public record UpdateMachineRequest(string Alias);

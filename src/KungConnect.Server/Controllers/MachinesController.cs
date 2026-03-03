@@ -42,6 +42,49 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
             machine.Status, machine.AgentVersion, machine.LastSeen));
     }
 
+    /// <summary>Returns full machine details including the agent secret and ready-to-paste config snippet.</summary>
+    [HttpGet("{id:guid}/detail")]
+    public async Task<ActionResult<MachineDetailDto>> GetDetail(Guid id)
+    {
+        var machine = await db.Machines.FindAsync(id);
+        if (machine is null) return NotFound();
+        if (!CanAccess(machine)) return Forbid();
+
+        var serverUrl = $"{Request.Scheme}://{Request.Host}";
+        var snippet = "{\n" +
+                      "  \"Agent\": {\n" +
+                      $"    \"ServerUrl\": \"{serverUrl}\",\n" +
+                      $"    \"MachineAlias\": \"{machine.Alias}\",\n" +
+                      $"    \"MachineSecret\": \"{machine.MachineSecret}\",\n" +
+                      "    \"AutoAcceptSessions\": true\n" +
+                      "  }\n" +
+                      "}";
+
+        return Ok(new MachineDetailDto(
+            machine.Id, machine.Alias, machine.Hostname,
+            machine.OsType, machine.Status, machine.AgentVersion,
+            machine.LastSeen, machine.RegisteredAt,
+            machine.MachineSecret, machine.AutoAcceptSessions,
+            machine.OwnerId is not null, snippet));
+    }
+
+    /// <summary>Rename a machine.</summary>
+    [HttpPatch("{id:guid}")]
+    public async Task<IActionResult> UpdateAlias(Guid id, [FromBody] UpdateMachineRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Alias))
+            return BadRequest(new { error = "Alias is required." });
+
+        var machine = await db.Machines.FindAsync(id);
+        if (machine is null) return NotFound();
+        if (!CanAccess(machine)) return Forbid();
+
+        machine.Alias = request.Alias.Trim();
+        await db.SaveChangesAsync();
+        return Ok(new MachineDto(machine.Id, machine.Alias, machine.Hostname,
+            machine.OsType, machine.Status, machine.AgentVersion, machine.LastSeen));
+    }
+
     /// <summary>
     /// Called by an agent on first run to self-register.
     /// Requires a valid user JWT so the machine is tied to a user account.

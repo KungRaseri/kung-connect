@@ -727,6 +727,101 @@ code {
     margin: 0;
 }
 
+.machine-card {
+    transition: border-color .15s, background .15s;
+}
+
+.machine-card:hover {
+    border-color: #475569;
+    background: #243447;
+}
+
+/* ── Machine detail page ─────────────────────────────────────────────── */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: .75rem;
+    margin-bottom: 1.5rem;
+}
+
+.detail-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: .75rem;
+    padding: 1rem;
+}
+
+.detail-label {
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #64748b;
+    margin: 0 0 .3rem;
+}
+
+.detail-value {
+    font-size: .9rem;
+    color: #f1f5f9;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.detail-section {
+    margin-bottom: 1.75rem;
+}
+
+.detail-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0 0 .5rem;
+}
+
+.config-snippet {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: .75rem;
+    padding: 1.25rem;
+    padding-right: 5rem;
+    overflow-x: auto;
+    font-size: .82rem;
+    color: #e2e8f0;
+    white-space: pre;
+    margin: 0;
+    font-family: monospace;
+    line-height: 1.6;
+}
+
+.copy-btn {
+    position: absolute;
+    top: .6rem;
+    right: .6rem;
+    font-size: .75rem;
+    padding: .3rem .6rem;
+}
+
+.machine-status-badge {
+    font-size: .78rem;
+    font-weight: 500;
+    padding: .25rem .65rem;
+    border-radius: .375rem;
+}
+
+.machine-status-badge.online {
+    background: #14532d;
+    color: #4ade80;
+    border: 1px solid #166534;
+}
+
+.machine-status-badge.offline {
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #334155;
+}
+
 .form-floating>.form-control-plaintext::placeholder,
 .form-floating>.form-control::placeholder {
     color: var(--bs-secondary-color);

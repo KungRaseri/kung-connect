@@ -1,0 +1,320 @@
+@page "/dashboard/machines/{Id:guid}"
+@layout DashboardLayout
+@inject AuthService Auth
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>@(_machine?.Alias ?? "Machine") — KungConnect</PageTitle>
+
+<div class="dash-page">
+    @if (_loading)
+    {
+        <div class="dash-empty"><div class="spinner"></div></div>
+    }
+    else if (_machine is null)
+    {
+        <div class="dash-empty">
+            <p>Machine not found or you don't have access.</p>
+            <a class="btn-ghost" href="/dashboard">← Back to Machines</a>
+        </div>
+    }
+    else
+    {
+        <!-- ── Header ────────────────────────────────────────────────────── -->
+        <div class="dash-page-header" style="flex-wrap:wrap;gap:.75rem;align-items:flex-start">
+            <div>
+                <a class="btn-ghost" href="/dashboard"
+                   style="font-size:.85rem;padding:.3rem .65rem;display:inline-flex;align-items:center;gap:.3rem;margin-bottom:.6rem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                         style="width:.8rem;height:.8rem">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    Machines
+                </a>
+                <div style="display:flex;align-items:center;gap:.65rem;flex-wrap:wrap">
+                    @if (_editingAlias)
+                    {
+                        <input class="field-input" @bind="_aliasEdit"
+                               style="font-size:1.15rem;font-weight:700;width:260px;padding:.4rem .75rem"/>
+                        <button class="btn-primary" style="padding:.4rem .9rem"
+                                @onclick="SaveAliasAsync" disabled="@_savingAlias">
+                            @(_savingAlias ? "Saving…" : "Save")
+                        </button>
+                        <button class="btn-ghost" style="padding:.4rem .7rem"
+                                @onclick="() => _editingAlias = false">Cancel</button>
+                    }
+                    else
+                    {
+                        <h2 style="margin:0;font-size:1.35rem">@_machine.Alias</h2>
+                        <button class="btn-ghost" style="padding:.25rem .45rem" title="Rename machine"
+                                @onclick="StartEditAlias">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 style="width:.85rem;height:.85rem">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <span class="machine-status-badge @(_machine.Status == "Online" ? "online" : "offline")">
+                            @_machine.Status
+                        </span>
+                    }
+                </div>
+            </div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                @if (_machine.Status == "Online")
+                {
+                    <button class="btn-primary" @onclick="ConnectAsync">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             style="width:1rem;height:1rem">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                        Connect
+                    </button>
+                }
+                @if (!_machine.IsClaimed)
+                {
+                    <button class="btn-ghost" @onclick="ClaimAsync" disabled="@_claiming">
+                        @(_claiming ? "Claiming…" : "Claim Machine")
+                    </button>
+                }
+                <button class="btn-ghost" style="color:#f87171;border-color:#7f1d1d"
+                        @onclick="() => _confirmDelete = true">
+                    Delete
+                </button>
+            </div>
+        </div>
+
+        @if (_connectError is not null)
+        {
+            <p class="error" style="margin-top:.25rem;margin-bottom:1rem">@_connectError</p>
+        }
+
+        @if (!_machine.IsClaimed)
+        {
+            <div style="background:#1c1108;border:1px solid #78350f;border-radius:.75rem;padding:.75rem 1rem;margin-bottom:1.25rem;color:#fde68a;font-size:.875rem">
+                ⚠️ This machine self-registered and has no owner. Click <strong>Claim Machine</strong> to take ownership.
+            </div>
+        }
+
+        <!-- ── Info grid ─────────────────────────────────────────────────── -->
+        <div class="detail-grid">
+            <div class="detail-card">
+                <p class="detail-label">Hostname</p>
+                <p class="detail-value">@(string.IsNullOrEmpty(_machine.Hostname) ? "—" : _machine.Hostname)</p>
+            </div>
+            <div class="detail-card">
+                <p class="detail-label">OS</p>
+                <p class="detail-value">@_machine.OsType</p>
+            </div>
+            <div class="detail-card">
+                <p class="detail-label">Agent Version</p>
+                <p class="detail-value">@(string.IsNullOrEmpty(_machine.AgentVersion) ? "Not reported" : _machine.AgentVersion)</p>
+            </div>
+            <div class="detail-card">
+                <p class="detail-label">Registered</p>
+                <p class="detail-value" title="@_machine.RegisteredAt.ToString("o")">
+                    @_machine.RegisteredAt.LocalDateTime.ToString("MMM d, yyyy HH:mm")
+                </p>
+            </div>
+            <div class="detail-card">
+                <p class="detail-label">Last Seen</p>
+                <p class="detail-value">@LastSeenRelative</p>
+            </div>
+            <div class="detail-card">
+                <p class="detail-label">Auto-accept Sessions</p>
+                <p class="detail-value">@(_machine.AutoAcceptSessions ? "Enabled" : "Disabled")</p>
+            </div>
+        </div>
+
+        <!-- ── Agent configuration ─────────────────────────────────────── -->
+        <div class="detail-section">
+            <h3 class="detail-section-title">Agent Configuration</h3>
+            <p style="color:#94a3b8;font-size:.875rem;margin:0 0 .75rem">
+                Paste this into <code>appsettings.json</code> in the same directory as the agent binary,
+                then start the agent. It will appear Online here once connected.
+            </p>
+            <div style="position:relative">
+                <pre class="config-snippet">@_machine.ConfigSnippet</pre>
+                <button class="btn-ghost copy-btn"
+                        @onclick='() => JS.InvokeVoidAsync("navigator.clipboard.writeText", _machine.ConfigSnippet)'>
+                    📋 Copy
+                </button>
+            </div>
+        </div>
+
+        <!-- ── Machine secret ──────────────────────────────────────────── -->
+        <div class="detail-section">
+            <h3 class="detail-section-title">Machine Secret</h3>
+            <p style="color:#94a3b8;font-size:.875rem;margin:0 0 .75rem">
+                The agent uses this secret to authenticate with this server. It is already included in the
+                config snippet above — only copy it separately if you need it.
+            </p>
+            <div style="display:flex;gap:.5rem;align-items:stretch">
+                <code style="flex:1;background:#0f172a;border:1px solid #334155;border-radius:.5rem;
+                             padding:.6rem .9rem;font-family:monospace;font-size:.875rem;color:#e2e8f0;
+                             overflow:auto;word-break:break-all;display:block">
+                    @(_showSecret ? _machine.MachineSecret : new string('•', _machine.MachineSecret.Length))
+                </code>
+                <button class="btn-ghost" @onclick="() => _showSecret = !_showSecret"
+                        style="white-space:nowrap">
+                    @(_showSecret ? "Hide" : "Show")
+                </button>
+                <button class="btn-ghost"
+                        @onclick='() => JS.InvokeVoidAsync("navigator.clipboard.writeText", _machine.MachineSecret)'
+                        title="Copy secret">
+                    📋
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@* ── Delete confirm modal ──────────────────────────────────────────────── *@
+@if (_confirmDelete)
+{
+    <div @onclick="() => _confirmDelete = false"
+         style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center">
+        <div @onclick:stopPropagation
+             style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:2rem;width:min(400px,92vw)">
+            <h3 style="margin:0 0 .75rem;color:#f87171">Delete Machine?</h3>
+            <p style="color:#94a3b8;margin:0 0 1.5rem;font-size:.9rem">
+                This permanently removes <strong style="color:#f1f5f9">@_machine?.Alias</strong> from KungConnect.
+                The agent will need to re-register if you want to reconnect it.
+            </p>
+            <div style="display:flex;gap:.5rem">
+                <button class="btn-danger" @onclick="DeleteAsync" disabled="@_deleting">
+                    @(_deleting ? "Deleting…" : "Yes, Delete")
+                </button>
+                <button class="btn-ghost" @onclick="() => _confirmDelete = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private MachineDetail? _machine;
+    private bool _loading = true;
+    private string? _connectError;
+    private bool _showSecret;
+    private bool _confirmDelete;
+    private bool _deleting;
+    private bool _claiming;
+    private bool _editingAlias;
+    private bool _savingAlias;
+    private string _aliasEdit = "";
+
+    private string LastSeenRelative
+    {
+        get
+        {
+            if (_machine is null) return "—";
+            var diff = DateTimeOffset.UtcNow - _machine.LastSeen;
+            return diff.TotalSeconds < 90  ? "just now"
+                 : diff.TotalMinutes < 60  ? $"{(int)diff.TotalMinutes}m ago"
+                 : diff.TotalHours   < 24  ? $"{(int)diff.TotalHours}h ago"
+                 : $"{(int)diff.TotalDays}d ago";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.InitializeAsync();
+        Auth.ApplyAuthHeader();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _machine = await Http.GetFromJsonAsync<MachineDetail>($"/api/machines/{Id}/detail");
+        }
+        catch { _machine = null; }
+        finally { _loading = false; }
+    }
+
+    private void StartEditAlias()
+    {
+        _aliasEdit = _machine?.Alias ?? "";
+        _editingAlias = true;
+    }
+
+    private async Task SaveAliasAsync()
+    {
+        if (_machine is null || string.IsNullOrWhiteSpace(_aliasEdit)) return;
+        _savingAlias = true;
+        try
+        {
+            var resp = await Http.PatchAsJsonAsync($"/api/machines/{Id}", new { Alias = _aliasEdit.Trim() });
+            if (resp.IsSuccessStatusCode)
+            {
+                _machine = _machine with { Alias = _aliasEdit.Trim() };
+                _editingAlias = false;
+            }
+        }
+        catch { }
+        finally { _savingAlias = false; }
+    }
+
+    private async Task ClaimAsync()
+    {
+        if (_machine is null) return;
+        _claiming = true;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync($"/api/machines/{Id}/claim", new { Alias = (string?)null });
+            if (resp.IsSuccessStatusCode)
+                _machine = _machine with { IsClaimed = true };
+        }
+        catch { }
+        finally { _claiming = false; }
+    }
+
+    private async Task DeleteAsync()
+    {
+        _deleting = true;
+        try
+        {
+            var resp = await Http.DeleteAsync($"/api/machines/{Id}");
+            if (resp.IsSuccessStatusCode)
+                Nav.NavigateTo("/dashboard");
+        }
+        catch { }
+        finally { _deleting = false; }
+    }
+
+    private async Task ConnectAsync()
+    {
+        _connectError = null;
+        var uri = $"kungconnect://session?server={Uri.EscapeDataString(Nav.BaseUri.TrimEnd('/'))}" +
+                  $"&machine={Id}&token={Uri.EscapeDataString(Auth.AccessToken ?? "")}";
+        try
+        {
+            await JS.InvokeVoidAsync("window.open", uri, "_self");
+        }
+        catch
+        {
+            _connectError = "Could not launch KungConnect desktop client. Is it installed?";
+        }
+    }
+
+    // ── Local DTO (matches MachineDetailDto JSON shape) ───────────────────
+    private sealed record MachineDetail(
+        Guid Id,
+        string Alias,
+        string Hostname,
+        string OsType,
+        string Status,
+        string AgentVersion,
+        DateTimeOffset LastSeen,
+        DateTimeOffset RegisteredAt,
+        string MachineSecret,
+        bool AutoAcceptSessions,
+        bool IsClaimed,
+        string ConfigSnippet);
+}
