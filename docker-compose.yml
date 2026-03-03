@@ -51,6 +51,8 @@ services:
       Relay__TurnPassword:           ${RELAY_TURN_PASSWORD:-}
       Redis__Enabled:                ${REDIS_ENABLED:-false}
       Redis__ConnectionString:       ${REDIS_CONNECTION_STRING:-}
+      # Download redirect URLs — defaults point to github.com/KungRaseri/kung-connect/releases/latest.
+      # Override only if you host your own builds.
       Downloads__WindowsUrl:         ${DOWNLOADS_WINDOWS_URL:-}
       Downloads__MacOsUrl:           ${DOWNLOADS_MACOS_URL:-}
       Downloads__LinuxUrl:           ${DOWNLOADS_LINUX_URL:-}

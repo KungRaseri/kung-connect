@@ -1,52 +1,42 @@
+using KungConnect.Server.Configuration;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace KungConnect.Server.Controllers;
 
 /// <summary>
-/// Serves download redirects for the KungConnect desktop client and agent.
-/// Configure the URLs via environment variables (or appsettings.json).
-/// Client: Downloads__WindowsUrl / MacOsUrl / LinuxUrl
-/// Agent:  Downloads__AgentWindowsUrl / AgentMacOsUrl / AgentLinuxUrl / AgentLinuxArm64Url
+/// Redirects download requests to GitHub Releases artifacts.
+/// Defaults point to github.com/KungRaseri/kung-connect/releases/latest
+/// and can be overridden via Downloads__ environment variables.
 /// </summary>
 [ApiController]
 [Route("downloads")]
-public class DownloadsController(IConfiguration config, ILogger<DownloadsController> logger) : ControllerBase
+public class DownloadsController(IOptions<DownloadsOptions> opts) : ControllerBase
 {
+    private DownloadsOptions O => opts.Value;
+
     // ── Desktop client (handles kungconnect:// URI scheme, used on the /join page) ─
 
     [HttpGet("windows")]
-    public IActionResult Windows() => RedirectToDownload("WindowsUrl");
+    public IActionResult Windows()   => Redirect(O.WindowsUrl);
 
     [HttpGet("macos")]
-    public IActionResult MacOs() => RedirectToDownload("MacOsUrl");
+    public IActionResult MacOs()     => Redirect(O.MacOsUrl);
 
     [HttpGet("linux")]
-    public IActionResult Linux() => RedirectToDownload("LinuxUrl");
+    public IActionResult Linux()     => Redirect(O.LinuxUrl);
 
     // ── Agent (background service installed on machines to be managed) ──────
 
     [HttpGet("agent/windows")]
-    public IActionResult AgentWindows() => RedirectToDownload("AgentWindowsUrl");
+    public IActionResult AgentWindows()    => Redirect(O.AgentWindowsUrl);
 
     [HttpGet("agent/macos")]
-    public IActionResult AgentMacOs() => RedirectToDownload("AgentMacOsUrl");
+    public IActionResult AgentMacOs()      => Redirect(O.AgentMacOsUrl);
 
     [HttpGet("agent/linux")]
-    public IActionResult AgentLinux() => RedirectToDownload("AgentLinuxUrl");
+    public IActionResult AgentLinux()      => Redirect(O.AgentLinuxUrl);
 
     [HttpGet("agent/linux-arm64")]
-    public IActionResult AgentLinuxArm64() => RedirectToDownload("AgentLinuxArm64Url");
-
-    // ────────────────────────────────────────────────────────────────
-
-    private IActionResult RedirectToDownload(string key)
-    {
-        var url = config[$"Downloads:{key}"];
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            logger.LogWarning("Download requested for {Key} but Downloads:{Key} is not configured", key, key);
-            return NotFound(new { message = $"No download is configured yet. Set the Downloads__{key} environment variable." });
-        }
-        return Redirect(url);
-    }
+    public IActionResult AgentLinuxArm64() => Redirect(O.AgentLinuxArm64Url);
 }

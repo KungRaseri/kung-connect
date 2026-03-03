@@ -44,3 +44,21 @@ public class RedisOptions
     public bool Enabled { get; set; } = false;
     public string ConnectionString { get; set; } = "localhost:6379";
 }
+
+public class DownloadsOptions
+{
+    public const string Section = "Downloads";
+
+    private const string Base = "https://github.com/KungRaseri/kung-connect/releases/latest/download";
+
+    // ── Desktop client ─────────────────────────────────────────────────
+    public string WindowsUrl { get; set; } = $"{Base}/KungConnect-win-x64.zip";
+    public string MacOsUrl   { get; set; } = $"{Base}/KungConnect-osx-arm64.zip";
+    public string LinuxUrl   { get; set; } = $"{Base}/KungConnect-linux-x64.tar.gz";
+
+    // ── Agent ────────────────────────────────────────────────────────
+    public string AgentWindowsUrl    { get; set; } = $"{Base}/KungConnect-Agent-win-x64.zip";
+    public string AgentMacOsUrl      { get; set; } = $"{Base}/KungConnect-Agent-osx-arm64.zip";
+    public string AgentLinuxUrl      { get; set; } = $"{Base}/KungConnect-Agent-linux-x64.tar.gz";
+    public string AgentLinuxArm64Url { get; set; } = $"{Base}/KungConnect-Agent-linux-arm64.tar.gz";
+}

@@ -16,6 +16,7 @@ builder.Services.Configure<ServerOptions>(builder.Configuration.GetSection(Serve
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Section));
 builder.Services.Configure<RelayOptions>(builder.Configuration.GetSection(RelayOptions.Section));
 builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection(RedisOptions.Section));
+builder.Services.Configure<DownloadsOptions>(builder.Configuration.GetSection(DownloadsOptions.Section));
 
 // ── Database ─────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(opts =>
