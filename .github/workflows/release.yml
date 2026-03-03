@@ -262,11 +262,7 @@ jobs:
           make_latest: true
           generate_release_notes: ${{ github.event_name != 'workflow_dispatch' }}
           fail_on_unmatched_files: true
-          files: |
-            artifacts/KungConnect-*.zip
-            artifacts/KungConnect-*.tar.gz
-            artifacts/KungConnect-Agent-*.zip
-            artifacts/KungConnect-Agent-*.tar.gz
+          files: artifacts/*
           body: |
             ## Docker image
 
