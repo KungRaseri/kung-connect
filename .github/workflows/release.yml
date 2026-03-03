@@ -256,6 +256,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
+          draft: false
+          prerelease: false
+          make_latest: true
           generate_release_notes: ${{ github.event_name != 'workflow_dispatch' }}
           fail_on_unmatched_files: true
           files: |
