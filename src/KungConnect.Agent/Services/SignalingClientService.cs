@@ -4,6 +4,7 @@ using KungConnect.Shared.Signaling;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Runtime.InteropServices;
 
 namespace KungConnect.Agent.Services;
 
@@ -71,7 +72,21 @@ public class SignalingClientService(
     private async Task ReRegisterAsync(CancellationToken ct = default)
     {
         if (_connection is null) return;
-        await _connection.InvokeAsync(SignalingEvents.AgentRegister, _opts.MachineSecret, ct);
-        logger.LogInformation("Agent re-registered with server");
+
+        var hostname = string.IsNullOrWhiteSpace(_opts.MachineAlias)
+            ? Environment.MachineName
+            : _opts.MachineAlias;
+
+        var osType = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "Windows"
+                   : RuntimeInformation.IsOSPlatform(OSPlatform.OSX)     ? "MacOs"
+                   : "Linux";
+
+        var version = typeof(SignalingClientService).Assembly
+            .GetName().Version?.ToString(3) ?? "0.0.0";
+
+        await _connection.InvokeAsync(
+            SignalingEvents.AgentRegister, _opts.MachineSecret, hostname, osType, version, ct);
+        logger.LogInformation(
+            "Agent registered: host={Host}, os={Os}, version={Ver}", hostname, osType, version);
     }
 }

@@ -10,12 +10,20 @@
 <div class="dash-page">
     <div class="dash-page-header">
         <h2>Machines</h2>
-        <button class="btn-primary" @onclick='() => Nav.NavigateTo("/dashboard/adhoc")'>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:1rem;height:1rem">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            New Ad Hoc Session
-        </button>
+        <div style="display:flex;gap:.5rem;align-items:center">
+            <button class="btn-ghost" @onclick="() => _showAddMachine = true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:1rem;height:1rem">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Machine
+            </button>
+            <button class="btn-primary" @onclick='() => Nav.NavigateTo("/dashboard/adhoc")'>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:1rem;height:1rem">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                New Ad Hoc Session
+            </button>
+        </div>
     </div>
 
     @if (_loading)
@@ -91,10 +99,109 @@
     }
 </div>
 
+@* ── Add Machine modal ──────────────────────────────────────────────────── *@
+@if (_showAddMachine)
+{
+    <div @onclick="CloseAddMachine"
+         style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center">
+        <div @onclick:stopPropagation
+             style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:2rem;width:min(520px,92vw);max-height:90vh;overflow-y:auto">
+
+            @if (_provisionedConfig is null)
+            {
+                <h3 style="margin:0 0 .5rem;color:#f1f5f9">Add Machine</h3>
+                <p style="color:#94a3b8;margin:0 0 1.5rem;font-size:.9rem">
+                    Give the machine a name. You'll get a config snippet to paste into the agent on that machine.
+                </p>
+
+                <label class="field-label">Machine Name</label>
+                <input class="field-input" @bind="_newAlias" @bind:event="oninput"
+                       placeholder="e.g. Office PC, Server-01"
+                       disabled="@_provisioning"
+                       style="width:100%;box-sizing:border-box;margin-top:.35rem"/>
+
+                @if (_provisionError is not null)
+                {
+                    <p class="error" style="margin-top:.75rem">@_provisionError</p>
+                }
+
+                <div style="display:flex;gap:.5rem;margin-top:1.25rem">
+                    <button class="btn-primary"
+                            @onclick="ProvisionMachineAsync"
+                            disabled="@(_provisioning || string.IsNullOrWhiteSpace(_newAlias))">
+                        @(_provisioning ? "Generating…" : "Generate Config")
+                    </button>
+                    <button class="btn-ghost" @onclick="CloseAddMachine">Cancel</button>
+                </div>
+            }
+            else
+            {
+                <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+                    <span style="color:#4ade80;font-size:1.4rem">✓</span>
+                    <h3 style="margin:0;color:#f1f5f9">Machine Added</h3>
+                </div>
+                <p style="color:#94a3b8;margin:0 0 1rem;font-size:.9rem">
+                    Copy this into <code>appsettings.json</code> in the same folder as the agent binary,
+                    then run <code>KungConnect.Agent</code> on that machine.
+                </p>
+                <pre style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:1rem;overflow-x:auto;font-size:.8rem;color:#e2e8f0;white-space:pre;margin:0">@_provisionedConfig</pre>
+                <div style="display:flex;gap:.5rem;margin-top:1rem">
+                    <button class="btn-ghost"
+                            @onclick='() => JS.InvokeVoidAsync("navigator.clipboard.writeText", _provisionedConfig)'>
+                        📋 Copy
+                    </button>
+                    <button class="btn-primary"
+                            @onclick="() => { CloseAddMachine(); _ = LoadMachinesAsync(); }">
+                        Done
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
 @code {
     private List<MachineViewModel> _machines = [];
     private bool _loading = true;
     private string? _connectError;
+
+    // ── Add Machine modal ────────────────────────────────────────────────────
+    private bool    _showAddMachine;
+    private string  _newAlias        = "";
+    private bool    _provisioning;
+    private string? _provisionError;
+    private string? _provisionedConfig;
+
+    private void CloseAddMachine()
+    {
+        _showAddMachine    = false;
+        _newAlias          = "";
+        _provisionError    = null;
+        _provisionedConfig = null;
+    }
+
+    private async Task ProvisionMachineAsync()
+    {
+        _provisionError = null;
+        _provisioning   = true;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("/api/machines/provision", new { Alias = _newAlias });
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadFromJsonAsync<ApiError>();
+                _provisionError = err?.Error ?? $"Server returned {(int)resp.StatusCode}";
+                return;
+            }
+            var result = await resp.Content.ReadFromJsonAsync<ProvisionResult>();
+            _provisionedConfig = result?.ConfigSnippet;
+        }
+        catch (Exception ex) { _provisionError = ex.Message; }
+        finally { _provisioning = false; }
+    }
+
+    private sealed record ProvisionResult(Guid MachineId, string Secret, string ConfigSnippet);
+    private sealed record ApiError(string? Error);
 
     protected override async Task OnInitializedAsync()
     {

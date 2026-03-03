@@ -3,6 +3,7 @@ using KungConnect.Server.Data;
 using KungConnect.Server.Data.Entities;
 using KungConnect.Shared.Constants;
 using KungConnect.Shared.DTOs.Machines;
+using KungConnect.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -66,6 +67,45 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
         return CreatedAtAction(nameof(GetById), new { id = machine.Id },
             new MachineDto(machine.Id, machine.Alias, machine.Hostname,
                 machine.OsType, machine.Status, machine.AgentVersion, machine.LastSeen));
+    }
+
+    /// <summary>
+    /// Creates a machine record and returns the secret to be placed in the agent's appsettings.json.
+    /// The machine appears as Online once the agent starts and calls AgentRegister with that secret.
+    /// </summary>
+    [HttpPost("provision")]
+    public async Task<ActionResult<ProvisionMachineResponse>> Provision([FromBody] ProvisionMachineRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Alias))
+            return BadRequest(new { error = "Alias is required." });
+
+        var secret = Guid.NewGuid().ToString("N"); // 32-char hex, no hyphens
+
+        var machine = new MachineEntity
+        {
+            OwnerId       = CurrentUserId,
+            Alias         = request.Alias.Trim(),
+            Hostname      = string.Empty,
+            AgentVersion  = string.Empty,
+            MachineSecret = secret
+        };
+
+        db.Machines.Add(machine);
+        await db.SaveChangesAsync();
+
+        var serverUrl = $"{Request.Scheme}://{Request.Host}";
+        var alias     = request.Alias.Trim();
+        var snippet   = "{\n" +
+                        "  \"Agent\": {\n" +
+                        $"    \"ServerUrl\": \"{serverUrl}\",\n" +
+                        $"    \"MachineAlias\": \"{alias}\",\n" +
+                        $"    \"MachineSecret\": \"{secret}\",\n" +
+                        "    \"AutoAcceptSessions\": true\n" +
+                        "  }\n" +
+                        "}";
+
+        logger.LogInformation("Machine '{Alias}' provisioned for user {UserId}", alias, CurrentUserId);
+        return Ok(new ProvisionMachineResponse(machine.Id, secret, snippet));
     }
 
     [HttpDelete("{id:guid}")]

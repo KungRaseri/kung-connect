@@ -3,6 +3,12 @@ using KungConnect.Shared.Models;
 
 namespace KungConnect.Shared.DTOs.Machines;
 
+/// <summary>Operator creates a machine record in the dashboard; agent uses the returned secret to connect.</summary>
+public record ProvisionMachineRequest(string Alias);
+
+/// <summary>Returned after provisioning. <see cref="ConfigSnippet"/> is ready to paste into the agent's appsettings.json.</summary>
+public record ProvisionMachineResponse(Guid MachineId, string Secret, string ConfigSnippet);
+
 public record RegisterMachineRequest(
     string Alias,
     string Hostname,

@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:KungConnect.Client.ViewModels"
+             x:Class="KungConnect.Client.Views.ServerSetupView"
+             x:DataType="vm:ServerSetupViewModel">
+
+  <Grid RowDefinitions="*,Auto,*" HorizontalAlignment="Center" Width="400">
+    <StackPanel Grid.Row="1" Spacing="16">
+
+      <!-- Branding -->
+      <StackPanel HorizontalAlignment="Center" Spacing="4">
+        <TextBlock Text="KungConnect"
+                   FontSize="28" FontWeight="Bold"
+                   HorizontalAlignment="Center"/>
+        <TextBlock Text="Enter your server URL to get started."
+                   HorizontalAlignment="Center"
+                   Opacity="0.6"/>
+      </StackPanel>
+
+      <!-- URL input -->
+      <StackPanel Spacing="4">
+        <TextBlock Text="Server URL"/>
+        <TextBox Text="{Binding ServerUrl}"
+                 Watermark="https://your-server.example.com"
+                 IsEnabled="{Binding !IsBusy}"/>
+      </StackPanel>
+
+      <!-- Errors / status -->
+      <TextBlock Text="{Binding ErrorMessage}"
+                 Foreground="Red"
+                 IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 TextWrapping="Wrap"/>
+
+      <TextBlock Text="{Binding StatusMessage}"
+                 IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 TextWrapping="Wrap"
+                 Opacity="0.65"/>
+
+      <!-- Action -->
+      <Button Content="Connect"
+              Command="{Binding ConfirmCommand}"
+              HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Center"
+              IsDefault="True"/>
+
+      <ProgressBar IsVisible="{Binding IsBusy}"
+                   IsIndeterminate="True"
+                   Height="4"/>
+
+    </StackPanel>
+  </Grid>
+
+</UserControl>

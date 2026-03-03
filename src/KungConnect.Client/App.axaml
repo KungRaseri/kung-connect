@@ -3,13 +3,29 @@
              x:Class="KungConnect.Client.App"
              xmlns:local="using:KungConnect.Client"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/avalonia-logo.ico" ToolTipText="KungConnect">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="Open KungConnect"
+                                        Command="{ReflectionBinding ShowWindowCommand}"/>
+                        <NativeMenuItemSeparator/>
+                        <NativeMenuItem Header="Quit"
+                                        Command="{ReflectionBinding QuitCommand}"/>
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+
 </Application>

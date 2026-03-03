@@ -63,7 +63,10 @@ builder.Services.AddSignalR(opts =>
 // ── Health checks ─────────────────────────────────────────────────────────
 builder.Services.AddHealthChecks();
 // ── API / OpenAPI ─────────────────────────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+        opts.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, cancellationToken) =>

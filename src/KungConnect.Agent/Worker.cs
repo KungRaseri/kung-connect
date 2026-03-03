@@ -22,6 +22,20 @@ public class Worker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (string.IsNullOrWhiteSpace(_opts.MachineSecret))
+        {
+            logger.LogCritical(
+                "\n  ─────────────────────────────────────────────────────────────────\n" +
+                "  MachineSecret is not configured.\n" +
+                "  To fix:\n" +
+                "    1. Open the KungConnect web dashboard\n" +
+                "    2. Click \"Add Machine\" and enter a name for this machine\n" +
+                "    3. Copy the generated appsettings.json into this folder\n" +
+                "    4. Restart the agent\n" +
+                "  ─────────────────────────────────────────────────────────────────");
+            return;
+        }
+
         logger.LogInformation("KungConnect Agent starting. Server: {Url}", _opts.ServerUrl);
 
         await signalingClient.StartAsync(stoppingToken);

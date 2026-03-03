@@ -1,5 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using KungConnect.Client.Models;
+﻿using KungConnect.Client.Models;
 using KungConnect.Client.Services;
 using KungConnect.Shared.DTOs.Machines;
 using KungConnect.Shared.Enums;
@@ -11,16 +10,13 @@ namespace KungConnect.Client.ViewModels;
 /// When the app is launched via a <c>kungconnect://</c> URI, the login screen is
 /// skipped and the appropriate view is shown immediately.
 /// </summary>
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ShellViewModelBase
 {
     private readonly IAuthService _auth;
     private readonly IMachineService _machines;
     private readonly ISessionService _sessions;
     private readonly ISignalingService _signaling;
     private readonly LaunchContext _launch;
-
-    [ObservableProperty]
-    private ViewModelBase _currentPage;
 
     public MainWindowViewModel(
         IAuthService auth,
@@ -40,12 +36,12 @@ public partial class MainWindowViewModel : ViewModelBase
             // Normal startup — show login
             var login = new LoginViewModel(auth);
             login.LoginSucceeded += OnLoginSucceeded;
-            _currentPage = login;
+            CurrentPage = login;
         }
         else
         {
             // URI launch — show a loading spinner while we connect
-            _currentPage = new LoadingViewModel("Connecting…");
+            CurrentPage = new LoadingViewModel("Connecting…");
             _ = HandleLaunchAsync();
         }
     }

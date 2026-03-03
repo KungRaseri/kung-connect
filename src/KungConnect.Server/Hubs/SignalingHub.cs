@@ -38,7 +38,11 @@ public class SignalingHub(
     // ── Agent registration ───────────────────────────────────────────────────
 
     [AllowAnonymous]
-    public async Task AgentRegister(string machineSecret)
+    public async Task AgentRegister(
+        string machineSecret,
+        string? hostname     = null,
+        string? osType       = null,
+        string? agentVersion = null)
     {
         var machine = await machineRegistry.AuthenticateAsync(machineSecret);
         if (machine is null)
@@ -46,6 +50,19 @@ public class SignalingHub(
             await Clients.Caller.SendAsync(SignalingEvents.Error, "Invalid machine secret");
             return;
         }
+
+        // Persist system info supplied by the agent on first connect / reconnect
+        var dbMachine = await db.Machines.FindAsync(machine.Id);
+        if (dbMachine is not null)
+        {
+            if (!string.IsNullOrEmpty(hostname))     dbMachine.Hostname     = hostname;
+            if (!string.IsNullOrEmpty(agentVersion)) dbMachine.AgentVersion = agentVersion;
+            if (!string.IsNullOrEmpty(osType) &&
+                Enum.TryParse<Shared.Enums.OsType>(osType, ignoreCase: true, out var parsedOs))
+                dbMachine.OsType = parsedOs;
+            await db.SaveChangesAsync();
+        }
+
         await machineRegistry.SetOnlineAsync(machine.Id, Context.ConnectionId);
         await Groups.AddToGroupAsync(Context.ConnectionId, $"machine:{machine.Id}");
 

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="750"
         x:Class="KungConnect.Client.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
+        x:DataType="vm:ShellViewModelBase"
         Icon="/Assets/avalonia-logo.ico"
         Title="KungConnect"
         Width="1200" Height="750"
