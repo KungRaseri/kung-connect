@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
+// Disambiguate: WinForms also exposes System.Drawing.Image via global usings.
+using SixLaborsImage = SixLabors.ImageSharp.Image;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
@@ -153,7 +155,7 @@ public class WindowsCapturer(ILogger<WindowsCapturer> logger) : IScreenCapturer
 
     private static byte[] EncodeBgraToJpeg(byte[] bgra, int width, int height)
     {
-        using var image = Image.LoadPixelData<Bgra32>(bgra, width, height);
+        using var image = SixLaborsImage.LoadPixelData<Bgra32>(bgra, width, height);
         using var ms    = new MemoryStream();
         image.SaveAsJpeg(ms, _jpegEncoder);
         return ms.ToArray();

@@ -39,7 +39,11 @@ internal static class AgentInstaller
         Println();
         PrintLine(ConsoleColor.Green, "  ✓ Configuration saved.");
         Println();
-        Console.WriteLine("  Starting agent — press Ctrl+C to stop.");
+        Console.WriteLine("  The agent will now start in the system tray.");
+        Console.WriteLine("  Right-click the tray icon at any time to check status or exit.");
+        Println();
+        Console.Write("  Press any key to continue...");
+        Console.ReadKey(intercept: true);
         Println();
     }
 

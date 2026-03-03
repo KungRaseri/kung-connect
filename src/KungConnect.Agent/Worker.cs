@@ -16,6 +16,7 @@ public class Worker(
     ISignalingClientService signalingClient,
     SessionHandlerService sessionHandler,
     IOptions<AgentOptions> agentOptions,
+    AgentConnectionStatus agentStatus,
     ILogger<Worker> logger) : BackgroundService
 {
     private readonly AgentOptions _opts = agentOptions.Value;
@@ -40,11 +41,13 @@ public class Worker(
         {
             try
             {
+                agentStatus.State = AgentState.Connecting;
                 logger.LogInformation("Connecting to {Url}", _opts.ServerUrl);
                 await signalingClient.StartAsync(stoppingToken);
                 RegisterHubHandlers(stoppingToken);
                 await signalingClient.RegisterAsync(stoppingToken);
 
+                agentStatus.State = AgentState.Connected;
                 attempt = 0; // reset backoff on successful connect
 
                 // ── Heartbeat loop ────────────────────────────────────────────
@@ -70,6 +73,7 @@ public class Worker(
             }
             catch (Exception ex)
             {
+                agentStatus.State = AgentState.Disconnected;
                 var wait = backoff[Math.Min(attempt++, backoff.Length - 1)];
                 logger.LogError(ex, "Connection failed. Retrying in {Sec}s...", wait);
 
