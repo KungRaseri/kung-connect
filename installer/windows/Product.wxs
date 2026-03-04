@@ -14,6 +14,7 @@
     msiexec /i KungConnect-Agent-win-x64.msi SERVERURL=https://my-server.com /quiet /norestart
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Package Name="KungConnect Agent"
@@ -77,11 +78,9 @@
               Condition="SERVERURL &lt;&gt; &quot;&quot;" />
     </InstallExecuteSequence>
 
-    <!-- WixUI_InstallDir provides: WelcomeDlg, InstallDirDlg, VerifyReadyDlg,
-         ProgressDlg, ExitDialog, CancelDlg, all fonts, loc strings, bitmaps.
-         WixUI_KungConnect (ServerUrlDlg.wxs) then inserts ServerUrlDlg into the
-         flow between WelcomeDlg and VerifyReadyDlg using Order=2 overrides. -->
-    <UIRef Id="WixUI_InstallDir" />
+    <!-- ui:WixUI references the internal built-in InstallDir set.
+         UIRef is only valid for user-defined (public) UI fragments. -->
+    <ui:WixUI Id="WixUI_InstallDir" />
     <UIRef Id="WixUI_KungConnect" />
     <!-- WixUI_InstallDir requires this to be the install-directory Id -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
