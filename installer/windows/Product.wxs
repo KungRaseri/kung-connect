@@ -39,7 +39,8 @@
       SERVERURL — collected from the UI dialog or passed on the command line for
       silent/automated installs.  Secure="yes" allows it to be set via CLI.
     -->
-    <Property Id="SERVERURL" Value="" Secure="yes" />
+    <!-- No default Value — WiX v4 does not allow Value="" on Property -->
+    <Property Id="SERVERURL" Secure="yes" />
 
     <!-- Install to %ProgramFiles%\KungConnect\Agent -->
     <StandardDirectory Id="ProgramFiles64Folder">
@@ -72,9 +73,9 @@
                   Return="check" />
 
     <InstallExecuteSequence>
-      <Custom Action="CA_ConfigureAgent" After="InstallFiles">
-        SERVERURL &lt;&gt; ""
-      </Custom>
+      <!-- WiX v4: condition is a Condition attribute, not inner text -->
+      <Custom Action="CA_ConfigureAgent" After="InstallFiles"
+              Condition="SERVERURL &lt;&gt; &quot;&quot;" />
     </InstallExecuteSequence>
 
     <!-- Reference our custom UI (defined in ServerUrlDlg.wxs) -->
@@ -92,15 +93,14 @@
               KeyPath="yes" />
       </Component>
 
-      <Component Id="AppSettingsComp" Guid="C6D7E8F9-A0B1-4C2D-9E3F-4A5B6C7D8E9F">
-        <!--
-          NeverOverwrite="yes": on upgrade the existing appsettings.json
-          (containing the user's MachineSecret, ServerUrl, etc.) is left untouched.
-          CA_ConfigureAgent then writes the re-entered server URL on top of it.
-        -->
+      <!--
+        NeverOverwrite on Component (not File) — WiX v4 moved this attribute.
+        Preserves MachineSecret / ServerUrl on upgrade; CA_ConfigureAgent rewrites URL.
+      -->
+      <Component Id="AppSettingsComp" Guid="C6D7E8F9-A0B1-4C2D-9E3F-4A5B6C7D8E9F"
+                 NeverOverwrite="yes">
         <File Id="AppSettingsJson"
               Source="$(AgentBinDir)\appsettings.json"
-              NeverOverwrite="yes"
               Vital="no" />
       </Component>
 

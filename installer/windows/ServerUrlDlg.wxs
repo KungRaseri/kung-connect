@@ -23,40 +23,40 @@
 
         <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15"
                  Transparent="yes" NoPrefix="yes">
-          <Text>{\WixUI_Font_Title}Server Configuration</Text>
+          <Text Value="{\WixUI_Font_Title}Server Configuration" />
         </Control>
         <Control Id="Description" Type="Text" X="25" Y="23" Width="320" Height="15"
                  Transparent="yes" NoPrefix="yes">
-          <Text>Enter the address of your KungConnect server.</Text>
+          <Text Value="Enter the address of your KungConnect server." />
         </Control>
 
         <!-- URL input -->
         <Control Id="ServerUrlLabel" Type="Text" X="25" Y="88" Width="320" Height="15">
-          <Text>Server &amp;URL:</Text>
+          <Text Value="Server &amp;URL:" />
         </Control>
         <Control Id="ServerUrlEdit" Type="Edit" X="25" Y="105" Width="320" Height="18"
                  Property="SERVERURL" Text="{256}" />
         <Control Id="ServerUrlHint" Type="Text" X="25" Y="128" Width="320" Height="15">
-          <Text>Example: https://my-server.example.com</Text>
+          <Text Value="Example: https://my-server.example.com" />
         </Control>
 
         <!-- Navigation buttons -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17"
                  Text="!(loc.WixUI_ButtonText_Back)">
-          <Publish Event="NewDialog" Value="WelcomeDlg">1</Publish>
+          <Publish Event="NewDialog" Value="WelcomeDlg" Condition="1" />
         </Control>
 
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17"
                  Default="yes" Text="!(loc.WixUI_ButtonText_Next)">
-          <!-- Disable until the user enters a real URL -->
-          <Condition Action="disable"><![CDATA[SERVERURL = "" OR SERVERURL = "https://"]]></Condition>
-          <Condition Action="enable"><![CDATA[SERVERURL <> "" AND SERVERURL <> "https://"]]></Condition>
-          <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+          <!-- WiX v4: Control/Condition children removed; use conditional Publish instead.
+               The dialog only advances when the user has entered a non-placeholder URL. -->
+          <Publish Event="NewDialog" Value="VerifyReadyDlg"
+                   Condition="SERVERURL &lt;&gt; &quot;&quot; AND SERVERURL &lt;&gt; &quot;https://&quot;" />
         </Control>
 
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17"
                  Cancel="yes" Text="!(loc.WixUI_ButtonText_Cancel)">
-          <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+          <Publish Event="SpawnDialog" Value="CancelDlg" Condition="1" />
         </Control>
 
       </Dialog>
@@ -83,9 +83,9 @@
       <DialogRef Id="ExitDialog" />
 
       <!-- Dialog navigation -->
-      <Publish Dialog="WelcomeDlg"     Control="Next"   Event="NewDialog" Value="ServerUrlDlg">1</Publish>
-      <Publish Dialog="VerifyReadyDlg" Control="Back"   Event="NewDialog" Value="ServerUrlDlg">1</Publish>
-      <Publish Dialog="ExitDialog"     Control="Finish" Event="EndDialog"  Value="Return"       Order="999">1</Publish>
+      <Publish Dialog="WelcomeDlg"     Control="Next"   Event="NewDialog" Value="ServerUrlDlg" Condition="1" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back"   Event="NewDialog" Value="ServerUrlDlg" Condition="1" />
+      <Publish Dialog="ExitDialog"     Control="Finish" Event="EndDialog"  Value="Return"       Order="999" Condition="1" />
 
     </UI>
   </Fragment>
