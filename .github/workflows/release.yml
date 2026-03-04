@@ -119,11 +119,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows: WiX MSI with GUI wizard (runs on Linux CI via cross-compile)
+          # Windows: WiX MSI — MUST run on windows-latest; WiX does not support Linux
           - rid: win-x64
             label: Windows (x64)
             tfm: net9.0-windows
-            runner: ubuntu-latest
+            runner: windows-latest
             installer: msi
 
           # Linux x64: Debian .deb + tar.gz fallback
@@ -156,6 +156,10 @@ jobs:
             runner: macos-latest
             installer: pkg
 
+    defaults:
+      run:
+        shell: bash   # backslash line-continuations work on all runners (Linux/macOS/Windows+Git)
+
     steps:
       - uses: actions/checkout@v4
 
@@ -179,9 +183,10 @@ jobs:
       - name: Install WiX
         if: matrix.installer == 'msi'
         run: |
-          dotnet tool install --global wix
-          wix extension add --global WixToolset.UI.wixext
-          wix extension add --global WixToolset.Util.wixext
+          # Pin to v4.x — v5+ are not yet stable; v6 breaks extension resolution.
+          dotnet tool install --global wix --version "4.0.5"
+          wix extension add --global WixToolset.UI.wixext/4.0.5
+          wix extension add --global WixToolset.Util.wixext/4.0.5
 
       - name: Build MSI
         if: matrix.installer == 'msi'
