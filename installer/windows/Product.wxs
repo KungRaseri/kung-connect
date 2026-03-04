@@ -14,7 +14,6 @@
     msiexec /i KungConnect-Agent-win-x64.msi SERVERURL=https://my-server.com /quiet /norestart
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <Package Name="KungConnect Agent"
@@ -78,8 +77,9 @@
               Condition="SERVERURL &lt;&gt; &quot;&quot;" />
     </InstallExecuteSequence>
 
-    <!-- Reference our custom UI (defined in ServerUrlDlg.wxs) -->
-    <ui:WixUI Id="WixUI_KungConnect" />
+    <!-- Reference our custom UI defined in ServerUrlDlg.wxs.
+         UIRef is correct here; ui:WixUI is only for built-in WixToolset dialog sets. -->
+    <UIRef Id="WixUI_KungConnect" />
 
   </Package>
 
