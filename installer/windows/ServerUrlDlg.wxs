@@ -68,9 +68,6 @@
            Our Publish elements below override its default navigation. -->
       <ui:WixUI Id="WixUI_Minimal" />
 
-      <!-- Font for our custom dialog title (Minimal doesn't define this name) -->
-      <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
-
       <!-- Dialog navigation -->
       <Publish Dialog="WelcomeDlg"     Control="Next"   Event="NewDialog" Value="ServerUrlDlg" Condition="1" />
       <Publish Dialog="VerifyReadyDlg" Control="Back"   Event="NewDialog" Value="ServerUrlDlg" Condition="1" />
