@@ -114,34 +114,47 @@ jobs:
   build-agent:
     name: Agent — ${{ matrix.label }}
     needs: [version]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Windows: WiX MSI with GUI wizard (runs on Linux CI via cross-compile)
           - rid: win-x64
-            bin: KungConnect.Agent.exe
-            pkg: zip
             label: Windows (x64)
             tfm: net9.0-windows
+            runner: ubuntu-latest
+            installer: msi
 
+          # Linux x64: Debian .deb + tar.gz fallback
           - rid: linux-x64
-            bin: KungConnect.Agent
-            pkg: tar
             label: Linux (x64)
             tfm: net9.0
+            runner: ubuntu-latest
+            installer: deb
+            deb_arch: amd64
 
+          # Linux ARM64: Debian .deb + tar.gz fallback
           - rid: linux-arm64
-            bin: KungConnect.Agent
-            pkg: tar
             label: Linux (ARM64)
             tfm: net9.0
+            runner: ubuntu-latest
+            installer: deb
+            deb_arch: arm64
 
+          # macOS Apple Silicon: .pkg installer (must run on macOS for pkgbuild)
           - rid: osx-arm64
-            bin: KungConnect.Agent
-            pkg: zip
             label: macOS (Apple Silicon)
             tfm: net9.0
+            runner: macos-latest
+            installer: pkg
+
+          # macOS Intel: .pkg installer
+          - rid: osx-x64
+            label: macOS (Intel x64)
+            tfm: net9.0
+            runner: macos-latest
+            installer: pkg
 
     steps:
       - uses: actions/checkout@v4
@@ -162,19 +175,51 @@ jobs:
             -p:Version=${{ needs.version.outputs.semver }} \
             -o dist/agent-${{ matrix.rid }}
 
-      - name: Package (zip)
-        if: matrix.pkg == 'zip'
+      # ── Windows: WiX MSI ──────────────────────────────────────────────────
+      - name: Install WiX
+        if: matrix.installer == 'msi'
         run: |
-          zip -j \
-            "KungConnect-Agent-${{ matrix.rid }}.zip" \
-            "dist/agent-${{ matrix.rid }}/${{ matrix.bin }}"
+          dotnet tool install --global wix
+          wix extension add --global WixToolset.UI.wixext
+          wix extension add --global WixToolset.Util.wixext
 
-      - name: Package (tar.gz)
-        if: matrix.pkg == 'tar'
+      - name: Build MSI
+        if: matrix.installer == 'msi'
         run: |
-          tar -czf \
-            "KungConnect-Agent-${{ matrix.rid }}.tar.gz" \
-            -C "dist/agent-${{ matrix.rid }}" "${{ matrix.bin }}"
+          wix build \
+            installer/windows/Product.wxs \
+            installer/windows/ServerUrlDlg.wxs \
+            -d Version=${{ needs.version.outputs.semver }} \
+            -d AgentBinDir=dist/agent-win-x64 \
+            -arch x64 \
+            -ext WixToolset.UI.wixext \
+            -ext WixToolset.Util.wixext \
+            -o KungConnect-Agent-win-x64.msi
+
+      # ── Linux: Debian .deb + tar.gz fallback ──────────────────────────────
+      - name: Build .deb
+        if: matrix.installer == 'deb'
+        run: |
+          chmod +x installer/linux/build-deb.sh
+          installer/linux/build-deb.sh \
+            dist/agent-${{ matrix.rid }} \
+            ${{ needs.version.outputs.semver }} \
+            KungConnect-Agent-${{ matrix.rid }}.deb \
+            ${{ matrix.deb_arch }}
+          # Also ship a tar.gz for users who prefer manual installs.
+          tar -czf KungConnect-Agent-${{ matrix.rid }}.tar.gz \
+            -C dist/agent-${{ matrix.rid }} KungConnect.Agent
+
+      # ── macOS: .pkg installer ─────────────────────────────────────────────
+      - name: Build .pkg
+        if: matrix.installer == 'pkg'
+        run: |
+          chmod +x installer/macos/build-pkg.sh
+          installer/macos/build-pkg.sh \
+            dist/agent-${{ matrix.rid }} \
+            ${{ needs.version.outputs.semver }} \
+            KungConnect-Agent-${{ matrix.rid }}.pkg \
+            ${{ matrix.rid }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -228,6 +273,8 @@ jobs:
   release:
     name: Create GitHub Release
     needs: [build-client, build-agent, docker, version]
+    # build-agent now fans out to 5 matrix entries across ubuntu + macos runners;
+    # all must succeed before a release is cut.
     runs-on: ubuntu-latest
 
     steps:
@@ -287,10 +334,11 @@ jobs:
             DOWNLOADS_LINUX_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-linux-x64.tar.gz
 
             # Agent (install on machines you want to manage)
-            DOWNLOADS_AGENT_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-win-x64.zip
-            DOWNLOADS_AGENT_MACOS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-osx-arm64.zip
-            DOWNLOADS_AGENT_LINUX_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-linux-x64.tar.gz
-            DOWNLOADS_AGENT_LINUX_ARM64_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-linux-arm64.tar.gz
+            DOWNLOADS_AGENT_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-win-x64.msi
+            DOWNLOADS_AGENT_MACOS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-osx-arm64.pkg
+            DOWNLOADS_AGENT_LINUX_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-linux-x64.deb
+            DOWNLOADS_AGENT_LINUX_ARM64_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-linux-arm64.deb
             ```
 
-            > **Intel Mac users:** use `KungConnect-osx-x64.zip` / `KungConnect-Agent-osx-x64.zip` instead of the arm64 builds.
+            > **Intel Mac users:** use `KungConnect-osx-x64.zip` (client) / `KungConnect-Agent-osx-x64.pkg` (agent) instead of the arm64 builds.
+            > **.deb users:** A `*.tar.gz` portable binary is also included in each release for distros without dpkg.

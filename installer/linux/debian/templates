@@ -1,0 +1,10 @@
+# KungConnect Agent — debconf template
+# Displayed during dpkg -i / apt install.
+
+Template: kungconnect-agent/server-url
+Type: string
+Default: https://
+Description: KungConnect server URL
+ Enter the full URL of your KungConnect server.
+ .
+ Example: https://my-server.example.com

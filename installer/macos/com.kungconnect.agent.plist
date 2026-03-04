@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchDaemon for KungConnect Agent.
+  Installed to /Library/LaunchDaemons/ — runs at boot as root,
+  independent of any user login session.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kungconnect.agent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/lib/kungconnect-agent/KungConnect.Agent</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/usr/local/lib/kungconnect-agent</string>
+
+    <!-- Start immediately and restart automatically if it exits -->
+    <key>RunAtLoad</key>   <true/>
+    <key>KeepAlive</key>   <true/>
+
+    <key>StandardOutPath</key>
+    <string>/var/log/kungconnect-agent.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/var/log/kungconnect-agent.log</string>
+</dict>
+</plist>

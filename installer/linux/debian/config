@@ -1,0 +1,9 @@
+#!/bin/sh
+# KungConnect Agent — debconf pre-configuration script.
+# Runs before postinst to collect the server URL interactively.
+set -e
+
+. /usr/share/debconf/confmodule
+
+db_input high kungconnect-agent/server-url || true
+db_go || true

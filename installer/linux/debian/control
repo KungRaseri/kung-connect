@@ -1,0 +1,9 @@
+Package: kungconnect-agent
+Version: VERSION_PLACEHOLDER
+Architecture: ARCH_PLACEHOLDER
+Maintainer: KungConnect <support@kungconnect.app>
+Depends: debconf, systemd
+Description: KungConnect remote-management agent
+ Connects this machine to a KungConnect server and enables secure
+ remote desktop management via an encrypted WebRTC session.
+ The agent runs as a systemd service and starts automatically at boot.

@@ -1,0 +1,18 @@
+[Unit]
+Description=KungConnect remote-management agent
+Documentation=https://github.com/KungRaseri/kung-connect
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/opt/kungconnect/agent/kungconnect-agent
+WorkingDirectory=/opt/kungconnect/agent
+Restart=on-failure
+RestartSec=10
+# Reduce attack surface
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

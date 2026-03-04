@@ -130,6 +130,14 @@ internal static class AgentInstaller
         catch (Exception ex)            { return (false, ex.Message); }
     }
 
+    /// <summary>
+    /// Writes server URL and machine alias directly to appsettings.json.
+    /// Called by platform installers via the <c>--configure</c> CLI flag
+    /// so they can write config without running the interactive wizard.
+    /// </summary>
+    public static void WriteSettings(string settingsPath, string serverUrl, string machineAlias)
+        => PersistSettings(settingsPath, serverUrl, machineAlias);
+
     private static void PersistSettings(string path, string serverUrl, string alias)
     {
         JsonObject root;

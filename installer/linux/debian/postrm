@@ -1,0 +1,9 @@
+#!/bin/sh
+# KungConnect Agent — post-removal script.
+set -e
+
+if [ "$1" = "purge" ]; then
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl daemon-reload || true
+    fi
+fi

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KungConnect Agent — Windows Installer (WiX v4)
+
+  Build (CI):
+    wix build Product.wxs ServerUrlDlg.wxs \
+      -d Version=<ver> -d AgentBinDir=dist/agent-win-x64 \
+      -arch x64 \
+      -ext WixToolset.UI.wixext \
+      -ext WixToolset.Util.wixext \
+      -o KungConnect-Agent-win-x64.msi
+
+  Silent / automated install:
+    msiexec /i KungConnect-Agent-win-x64.msi SERVERURL=https://my-server.com /quiet /norestart
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="KungConnect Agent"
+           Manufacturer="KungConnect"
+           Version="$(Version)"
+           UpgradeCode="A3F0C1D2-B4E5-4A6B-9C7D-8E0F1A2B3C4D"
+           Scope="perMachine">
+
+    <SummaryInformation Description="KungConnect remote-management agent" />
+
+    <!--
+      MajorUpgrade: on upgrade, old product is removed AFTER new files are installed
+      (Schedule=afterInstallExecute) so the existing appsettings.json is preserved
+      until the new CustomAction can write to it.
+    -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of KungConnect Agent is already installed."
+                  Schedule="afterInstallExecute" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!--
+      SERVERURL — collected from the UI dialog or passed on the command line for
+      silent/automated installs.  Secure="yes" allows it to be set via CLI.
+    -->
+    <Property Id="SERVERURL" Value="" Secure="yes" />
+
+    <!-- Install to %ProgramFiles%\KungConnect\Agent -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="CompanyDir" Name="KungConnect">
+        <Directory Id="INSTALLFOLDER" Name="Agent" />
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="ProductFeature" Title="KungConnect Agent" Level="1">
+      <ComponentGroupRef Id="AgentFiles" />
+      <ComponentGroupRef Id="AgentService" />
+    </Feature>
+
+    <!--
+      Custom action: write appsettings.json with the server URL the user entered.
+      SetProperty feeds the full command into WixQuietExec's well-known property.
+      Runs AFTER InstallFiles (so the exe is on disk) but BEFORE InstallServices
+      (so the service starts with the correct config).
+    -->
+    <SetProperty Id="WixQuietExecCmdLine"
+                 Value='"[INSTALLFOLDER]KungConnect.Agent.exe" --configure --server-url "[SERVERURL]"'
+                 Before="CA_ConfigureAgent"
+                 Sequence="execute" />
+
+    <CustomAction Id="CA_ConfigureAgent"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="check" />
+
+    <InstallExecuteSequence>
+      <Custom Action="CA_ConfigureAgent" After="InstallFiles">
+        SERVERURL &lt;&gt; ""
+      </Custom>
+    </InstallExecuteSequence>
+
+    <!-- Reference our custom UI (defined in ServerUrlDlg.wxs) -->
+    <ui:WixUI Id="WixUI_KungConnect" />
+
+  </Package>
+
+  <!-- ── File components ──────────────────────────────────────────────────── -->
+  <Fragment>
+    <ComponentGroup Id="AgentFiles" Directory="INSTALLFOLDER">
+
+      <Component Id="AgentExeComp" Guid="B5C6D7E8-F9A0-4B1C-8D2E-3F4A5B6C7D8E">
+        <File Id="AgentExe"
+              Source="$(AgentBinDir)\KungConnect.Agent.exe"
+              KeyPath="yes" />
+      </Component>
+
+      <Component Id="AppSettingsComp" Guid="C6D7E8F9-A0B1-4C2D-9E3F-4A5B6C7D8E9F">
+        <!--
+          NeverOverwrite="yes": on upgrade the existing appsettings.json
+          (containing the user's MachineSecret, ServerUrl, etc.) is left untouched.
+          CA_ConfigureAgent then writes the re-entered server URL on top of it.
+        -->
+        <File Id="AppSettingsJson"
+              Source="$(AgentBinDir)\appsettings.json"
+              NeverOverwrite="yes"
+              Vital="no" />
+      </Component>
+
+    </ComponentGroup>
+  </Fragment>
+
+  <!-- ── Windows Service registration ─────────────────────────────────────── -->
+  <Fragment>
+    <ComponentGroup Id="AgentService" Directory="INSTALLFOLDER">
+      <Component Id="AgentServiceComp" Guid="D7E8F9A0-B1C2-4D3E-AF4A-5B6C7D8E9F0A">
+        <CreateFolder />
+        <ServiceInstall Id="AgentServiceInstall"
+                        Name="KungConnectAgent"
+                        DisplayName="KungConnect Agent"
+                        Description="KungConnect remote-management agent"
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="LocalSystem" />
+        <!--
+          Start="install"  — start the service right after installation.
+          Stop="both"      — stop on install (upgrade) and uninstall.
+          Remove="uninstall" — remove from SCM on uninstall.
+        -->
+        <ServiceControl Id="AgentServiceControl"
+                        Name="KungConnectAgent"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+</Wix>

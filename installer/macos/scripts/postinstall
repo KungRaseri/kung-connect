@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# KungConnect Agent — macOS postinstall script.
+# Runs as root after all files are placed on disk.
+set -euo pipefail
+
+INSTALL_DIR="/usr/local/lib/kungconnect-agent"
+PLIST_PATH="/Library/LaunchDaemons/com.kungconnect.agent.plist"
+
+# ── Ask for server URL ─────────────────────────────────────────────────────
+# Try a native macOS GUI dialog first; fall back to env var for headless installs.
+
+SERVER_URL=""
+
+if [ -z "$SERVER_URL" ]; then
+    SERVER_URL="${KUNGCONNECT_SERVER_URL:-}"
+fi
+
+if [ -z "$SERVER_URL" ] || [ "$SERVER_URL" = "https://" ]; then
+    SERVER_URL=$(osascript 2>/dev/null <<'APPLESCRIPT' || echo ""
+tell application "System Events"
+    set result to text returned of (display dialog \
+        "Enter your KungConnect server URL:" & return & return & \
+        "Example: https://my-server.example.com" \
+        default answer "https://" \
+        with title "KungConnect Agent Setup" \
+        buttons {"Install"} \
+        default button "Install" \
+        with icon note)
+    return result
+end tell
+APPLESCRIPT
+    )
+fi
+
+# ── Write configuration ────────────────────────────────────────────────────
+if [ -n "$SERVER_URL" ] && [ "$SERVER_URL" != "https://" ]; then
+    "$INSTALL_DIR/KungConnect.Agent" --configure --server-url "$SERVER_URL"
+else
+    echo "KungConnect Agent: server URL not configured."
+    echo "  Configure later by running:"
+    echo "    sudo $INSTALL_DIR/KungConnect.Agent --configure --server-url <url>"
+fi
+
+# ── Load LaunchDaemon (starts at boot, runs as root) ──────────────────────
+launchctl unload "$PLIST_PATH" 2>/dev/null || true
+launchctl load   "$PLIST_PATH"
+
+echo "KungConnect Agent installed and running."

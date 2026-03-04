@@ -57,10 +57,10 @@ public class DownloadsOptions
     private string _windowsUrl         = $"{Base}/KungConnect-win-x64.zip";
     private string _macOsUrl           = $"{Base}/KungConnect-osx-arm64.zip";
     private string _linuxUrl           = $"{Base}/KungConnect-linux-x64.tar.gz";
-    private string _agentWindowsUrl    = $"{Base}/KungConnect-Agent-win-x64.zip";
-    private string _agentMacOsUrl      = $"{Base}/KungConnect-Agent-osx-arm64.zip";
-    private string _agentLinuxUrl      = $"{Base}/KungConnect-Agent-linux-x64.tar.gz";
-    private string _agentLinuxArm64Url = $"{Base}/KungConnect-Agent-linux-arm64.tar.gz";
+    private string _agentWindowsUrl    = $"{Base}/KungConnect-Agent-win-x64.msi";
+    private string _agentMacOsUrl      = $"{Base}/KungConnect-Agent-osx-arm64.pkg";
+    private string _agentLinuxUrl      = $"{Base}/KungConnect-Agent-linux-x64.deb";
+    private string _agentLinuxArm64Url = $"{Base}/KungConnect-Agent-linux-arm64.deb";
 
     // ── Desktop client ──────────────────────────────────────────────────────
     public string WindowsUrl { get => _windowsUrl; set { if (!string.IsNullOrWhiteSpace(value)) _windowsUrl = value; } }

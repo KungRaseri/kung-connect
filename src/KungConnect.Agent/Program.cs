@@ -17,9 +17,27 @@ internal static class Program
 #endif
     static void Main(string[] args)
     {
-        // ── First-run detection ───────────────────────────────────────────────
         var settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
 
+        // ── Silent configure mode ─────────────────────────────────────────────────
+        // Called by platform installers (MSI custom action, deb postinst, pkg postinstall):
+        //   KungConnect.Agent --configure --server-url https://my-server.com
+        // Writes appsettings.json and exits — does NOT start the host.
+        if (args.Contains("--configure"))
+        {
+            var serverUrl    = GetArg(args, "--server-url") ?? "";
+            var machineAlias = GetArg(args, "--machine-alias") ?? Environment.MachineName;
+            if (string.IsNullOrWhiteSpace(serverUrl))
+            {
+                Console.Error.WriteLine("[KungConnect Agent] --configure requires --server-url <url>");
+                Environment.Exit(1);
+            }
+            AgentInstaller.WriteSettings(settingsPath, serverUrl, machineAlias);
+            Console.WriteLine($"[KungConnect Agent] Configuration written to {settingsPath}");
+            return;
+        }
+
+        // ── First-run detection ───────────────────────────────────────────────
         var preConfig = new ConfigurationBuilder()
             .AddJsonFile(settingsPath, optional: true)
             .AddEnvironmentVariables()
@@ -32,25 +50,22 @@ internal static class Program
         if (needsSetup)
         {
 #if WINDOWS
-            // WinExe has no console by default — allocate one for the interactive wizard.
-            NativeConsole.Alloc();
-            try
+            // Skip the interactive wizard when running headless as a Windows Service.
+            if (!WindowsServiceHelpers.IsWindowsService())
             {
-                AgentInstaller.RunAsync(settingsPath).GetAwaiter().GetResult();
-            }
-            finally
-            {
-                NativeConsole.Free();
+                NativeConsole.Alloc();
+                try   { AgentInstaller.RunAsync(settingsPath).GetAwaiter().GetResult(); }
+                finally { NativeConsole.Free(); }
             }
 #else
-            if (Console.IsInputRedirected)
+            if (!Console.IsInputRedirected)
+                AgentInstaller.RunAsync(settingsPath).GetAwaiter().GetResult();
+            else
             {
-                // Running as a service / in a container — can't show interactive prompts.
                 Console.Error.WriteLine("[KungConnect Agent] Agent.ServerUrl is not configured.");
                 Console.Error.WriteLine("Set Agent__ServerUrl via environment variable or appsettings.json, then restart.");
                 return;
             }
-            AgentInstaller.RunAsync(settingsPath).GetAwaiter().GetResult();
 #endif
         }
 
@@ -97,6 +112,15 @@ internal static class Program
         // Linux / macOS: run as a normal foreground process / daemon.
         host.Run();
 #endif
+    }
+
+    /// <summary>Returns the value after <paramref name="name"/> in <paramref name="args"/>, or null.</summary>
+    private static string? GetArg(string[] args, string name)
+    {
+        for (int i = 0; i < args.Length - 1; i++)
+            if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
+                return args[i + 1];
+        return null;
     }
 }
 

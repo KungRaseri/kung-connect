@@ -1,0 +1,38 @@
+#!/bin/sh
+# KungConnect Agent — post-installation script.
+set -e
+
+INSTALL_DIR="/opt/kungconnect/agent"
+
+if [ "$1" = "configure" ]; then
+
+    # ── Get server URL from debconf ──────────────────────────────────────────
+    SERVER_URL=""
+    if [ -f /usr/share/debconf/confmodule ]; then
+        . /usr/share/debconf/confmodule
+        db_get kungconnect-agent/server-url && SERVER_URL="$RET" || true
+        db_stop || true
+    fi
+
+    # Fall back to environment variable (for automated / scripted installs).
+    if [ -z "$SERVER_URL" ] || [ "$SERVER_URL" = "https://" ]; then
+        SERVER_URL="${KUNGCONNECT_SERVER_URL:-}"
+    fi
+
+    # Write config (preserves existing MachineSecret and other settings).
+    if [ -n "$SERVER_URL" ] && [ "$SERVER_URL" != "https://" ]; then
+        "$INSTALL_DIR/kungconnect-agent" --configure --server-url "$SERVER_URL"
+    else
+        echo "KungConnect Agent: server URL not set."
+        echo "  Configure it later by running:"
+        echo "    sudo $INSTALL_DIR/kungconnect-agent --configure --server-url <url>"
+    fi
+
+    # ── Enable and start systemd service ────────────────────────────────────
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl daemon-reload
+        systemctl enable kungconnect-agent.service
+        systemctl restart kungconnect-agent.service || true
+    fi
+
+fi
