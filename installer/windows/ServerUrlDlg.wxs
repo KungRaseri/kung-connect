@@ -7,8 +7,7 @@
   The Next button on ServerUrlDlg is disabled until the user enters a non-empty URL
   that doesn't equal the placeholder "https://".
 -->
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
   <!-- ── ServerUrlDlg dialog ───────────────────────────────────────────────── -->
   <Fragment>
@@ -59,19 +58,14 @@
     </UI>
   </Fragment>
 
-  <!-- ── Custom UI sequence ────────────────────────────────────────────────── -->
   <Fragment>
     <UI Id="WixUI_KungConnect">
 
-      <!-- WixUI_Minimal provides: WelcomeDlg, VerifyReadyDlg, ProgressDlg, ExitDialog,
-           CancelDlg, all fonts, loc strings, and bitmap WixVariables.
-           Our Publish elements below override its default navigation. -->
-      <ui:WixUI Id="WixUI_Minimal" />
-
-      <!-- Dialog navigation -->
-      <Publish Dialog="WelcomeDlg"     Control="Next"   Event="NewDialog" Value="ServerUrlDlg" Condition="1" />
-      <Publish Dialog="VerifyReadyDlg" Control="Back"   Event="NewDialog" Value="ServerUrlDlg" Condition="1" />
-      <Publish Dialog="ExitDialog"     Control="Finish" Event="EndDialog"  Value="Return"       Order="999" Condition="1" />
+      <!-- Navigation overrides: insert ServerUrlDlg between WelcomeDlg and VerifyReadyDlg.
+           Order=2 fires AFTER WixUI_InstallDir's default Order=1 entries, so this
+           NewDialog wins and the user lands on ServerUrlDlg instead of InstallDirDlg. -->
+      <Publish Dialog="WelcomeDlg"     Control="Next" Event="NewDialog" Value="ServerUrlDlg" Order="2" Condition="1" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="ServerUrlDlg" Order="2" Condition="1" />
 
     </UI>
   </Fragment>

@@ -77,9 +77,14 @@
               Condition="SERVERURL &lt;&gt; &quot;&quot;" />
     </InstallExecuteSequence>
 
-    <!-- Reference our custom UI defined in ServerUrlDlg.wxs.
-         UIRef is correct here; ui:WixUI is only for built-in WixToolset dialog sets. -->
+    <!-- WixUI_InstallDir provides: WelcomeDlg, InstallDirDlg, VerifyReadyDlg,
+         ProgressDlg, ExitDialog, CancelDlg, all fonts, loc strings, bitmaps.
+         WixUI_KungConnect (ServerUrlDlg.wxs) then inserts ServerUrlDlg into the
+         flow between WelcomeDlg and VerifyReadyDlg using Order=2 overrides. -->
+    <UIRef Id="WixUI_InstallDir" />
     <UIRef Id="WixUI_KungConnect" />
+    <!-- WixUI_InstallDir requires this to be the install-directory Id -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
 
   </Package>
 
