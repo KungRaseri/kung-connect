@@ -125,7 +125,10 @@
                         ErrorControl="normal"
                         Account="LocalSystem" />
         <!--
-          Start="install"  — start the service right after installation.
+          Start="install"  — kick off the service right after installation.
+          Wait="no"        — don't block the MSI waiting for Running state;
+                             the 30-second SCM timeout would otherwise fail the install
+                             if the server isn't reachable yet.
           Stop="both"      — stop on install (upgrade) and uninstall.
           Remove="uninstall" — remove from SCM on uninstall.
         -->
@@ -134,7 +137,7 @@
                         Start="install"
                         Stop="both"
                         Remove="uninstall"
-                        Wait="yes" />
+                        Wait="no" />
       </Component>
     </ComponentGroup>
   </Fragment>

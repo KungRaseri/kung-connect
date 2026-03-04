@@ -81,6 +81,11 @@ internal static class Program
         builder.Services.AddSingleton<SessionHandlerService>();
         builder.Services.AddHostedService<Worker>();
 
+        // Keep the host alive even if a connection error leaks out of the
+        // Worker retry loop — the service will reconnect on the next attempt.
+        builder.Services.Configure<HostOptions>(o =>
+            o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
+
         builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Warning);
 
 #if WINDOWS
