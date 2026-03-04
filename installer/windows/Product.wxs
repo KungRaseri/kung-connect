@@ -55,12 +55,12 @@
     </Feature>
 
     <!--
-      Custom action: write appsettings.json with the server URL the user entered.
-      SetProperty feeds the full command into WixQuietExec's well-known property.
-      Runs AFTER InstallFiles (so the exe is on disk) but BEFORE InstallServices
-      (so the service starts with the correct config).
+      Pass the command line to the deferred CA via CustomActionData.
+      Deferred CAs run in a separate elevated process and cannot read session
+      properties; the only data channel is CustomActionData, which Windows
+      Installer populates when you SetProperty with Id == the CA name.
     -->
-    <SetProperty Id="WixQuietExecCmdLine"
+    <SetProperty Id="CA_ConfigureAgent"
                  Value='"[INSTALLFOLDER]KungConnect.Agent.exe" --configure --server-url "[SERVERURL]"'
                  Before="CA_ConfigureAgent"
                  Sequence="execute" />
