@@ -15,11 +15,7 @@
     <UI>
       <Dialog Id="ServerUrlDlg" Width="370" Height="270" Title="[ProductName] Setup">
 
-        <!-- Standard installer banner -->
-        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
-                 TabSkip="no" Text="!(wix.WixUIBannerBmp)" />
-        <Control Id="BannerLine"  Type="Line" X="0" Y="44"  Width="370" Height="0" />
-        <Control Id="BottomLine"  Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
 
         <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="15"
                  Transparent="yes" NoPrefix="yes">
@@ -42,12 +38,12 @@
 
         <!-- Navigation buttons -->
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17"
-                 Text="!(loc.WixUI_ButtonText_Back)">
+                 Text="&amp;Back">
           <Publish Event="NewDialog" Value="WelcomeDlg" Condition="1" />
         </Control>
 
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17"
-                 Default="yes" Text="!(loc.WixUI_ButtonText_Next)">
+                 Default="yes" Text="&amp;Next >">
           <!-- WiX v4: Control/Condition children removed; use conditional Publish instead.
                The dialog only advances when the user has entered a non-placeholder URL. -->
           <Publish Event="NewDialog" Value="VerifyReadyDlg"
@@ -55,7 +51,7 @@
         </Control>
 
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17"
-                 Cancel="yes" Text="!(loc.WixUI_ButtonText_Cancel)">
+                 Cancel="yes" Text="Cancel">
           <Publish Event="SpawnDialog" Value="CancelDlg" Condition="1" />
         </Control>
 
@@ -67,20 +63,13 @@
   <Fragment>
     <UI Id="WixUI_KungConnect">
 
-      <!-- Pull in the common error/cancel dialogs -->
-      <UIRef Id="WixUI_Common" />
+      <!-- WixUI_Minimal provides: WelcomeDlg, VerifyReadyDlg, ProgressDlg, ExitDialog,
+           CancelDlg, all fonts, loc strings, and bitmap WixVariables.
+           Our Publish elements below override its default navigation. -->
+      <ui:WixUI Id="WixUI_Minimal" />
 
-      <!-- Font definitions required by the dialog controls above -->
-      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
-      <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
-      <TextStyle Id="WixUI_Font_Title"  FaceName="Tahoma" Size="9" Bold="yes" />
-      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
-
-      <!-- Reference the standard WixUI dialogs we need -->
-      <DialogRef Id="WelcomeDlg" />
-      <DialogRef Id="VerifyReadyDlg" />
-      <DialogRef Id="ProgressDlg" />
-      <DialogRef Id="ExitDialog" />
+      <!-- Font for our custom dialog title (Minimal doesn't define this name) -->
+      <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
 
       <!-- Dialog navigation -->
       <Publish Dialog="WelcomeDlg"     Control="Next"   Event="NewDialog" Value="ServerUrlDlg" Condition="1" />
