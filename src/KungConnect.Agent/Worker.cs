@@ -24,6 +24,12 @@ public class Worker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Yield immediately so BackgroundService.StartAsync returns Task.CompletedTask
+        // before any network I/O runs. This allows the Generic Host to reach
+        // IApplicationLifetime.NotifyStarted(), which is what makes the Windows
+        // Service report SERVICE_RUNNING to SCM within the 30-second startup timeout.
+        await Task.Yield();
+
         // First run: generate and persist a stable machine identity.
         // The server upserts a machine record the first time this secret is seen.
         if (string.IsNullOrWhiteSpace(_opts.MachineSecret))

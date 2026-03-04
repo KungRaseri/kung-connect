@@ -125,16 +125,14 @@
                         ErrorControl="normal"
                         Account="LocalSystem" />
         <!--
-          Start="install"  — kick off the service right after installation.
-          Wait="no"        — don't block the MSI waiting for Running state;
-                             the 30-second SCM timeout would otherwise fail the install
-                             if the server isn't reachable yet.
-          Stop="both"      — stop on install (upgrade) and uninstall.
+          No Start on install: the service auto-starts on next boot via ServiceInstall Start="auto".
+          Trying to start immediately during installation is unreliable — the server
+          may not be reachable yet and would cause a 30-second SCM timeout + Error 1920.
+          Stop="both"      — stop on upgrade and uninstall.
           Remove="uninstall" — remove from SCM on uninstall.
         -->
         <ServiceControl Id="AgentServiceControl"
                         Name="KungConnectAgent"
-                        Start="install"
                         Stop="both"
                         Remove="uninstall"
                         Wait="no" />
