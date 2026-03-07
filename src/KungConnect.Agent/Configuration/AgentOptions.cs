@@ -28,13 +28,13 @@ public class AgentOptions
     /// Leave blank (default) to disable automatic update checking.
     /// Example: <c>my-org</c>
     /// </summary>
-    public string GitHubOwner { get; set; } = string.Empty;
+    public string GitHubOwner { get; set; } = "kungraseri";
 
     /// <summary>
     /// GitHub repository name containing the releases to check.
     /// Example: <c>kung-connect</c>
     /// </summary>
-    public string GitHubRepo { get; set; } = string.Empty;
+    public string GitHubRepo { get; set; } = "kung-connect";
 
     /// <summary>How often (in hours) to poll GitHub Releases for a new version. Minimum 1. Default 4.</summary>
     public int UpdateCheckIntervalHours { get; set; } = 4;
