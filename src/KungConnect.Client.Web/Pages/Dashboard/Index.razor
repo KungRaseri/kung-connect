@@ -49,7 +49,7 @@
         <div class="machine-grid">
             @foreach (var m in _machines)
             {
-                <div class="machine-card @(m.Online ? "online" : "offline")" style="cursor:pointer"
+                <div class="machine-card @(m.Online ? "online" : m.Uninstalled ? "uninstalled" : "offline")" style="cursor:pointer"
                      @onclick='() => Nav.NavigateTo($"/dashboard/machines/{m.Id}")'>
                     <div class="machine-card-header">
                         <span class="machine-status-dot"></span>
@@ -62,7 +62,7 @@
                             disabled="@(!m.Online)"
                             @onclick:stopPropagation
                             @onclick="() => ConnectToMachine(m)">
-                        @(m.Online ? "Connect" : "Offline")
+                        @(m.Online ? "Connect" : m.Uninstalled ? "Not Installed" : "Offline")
                     </button>
                 </div>
             }
@@ -260,7 +260,8 @@
         public string Alias    => d.Alias;
         public string Hostname => d.Hostname;
         public string OsType   => d.OsType;
-        public bool   Online   => d.Status == "Online";
+        public bool   Online       => d.Status == "Online";
+        public bool   Uninstalled  => d.Status == "Uninstalled";
         public string LastSeenRelative
         {
             get

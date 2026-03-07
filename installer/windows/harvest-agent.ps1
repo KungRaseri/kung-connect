@@ -161,10 +161,10 @@ foreach ($file in $files) {
 
     $guid    = New-DeterministicGuid $relPath
     $dirRef  = if ($isRoot) { '' } else { " Directory=""$($dirMap[$dirAbs])""" }
-    $noOverwrite = if ($isConfig) { ' NeverOverwrite="yes"' } else { '' }
+    $extraAttrs = if ($isConfig) { ' NeverOverwrite="yes" Permanent="yes"' } else { '' }
 
     $null = $sb.AppendLine('')
-    $null = $sb.AppendLine("      <Component Id=""$compId"" Guid=""$guid""$dirRef$noOverwrite>")
+    $null = $sb.AppendLine("      <Component Id=\"$compId\" Guid=\"$guid\"$dirRef$extraAttrs>")
 
     if ($isExe) {
         $null = $sb.AppendLine("        <File Id=""$fileId"" Source=""`$(AgentBinDir)\$relPath"" KeyPath=""yes"" />")
@@ -185,7 +185,7 @@ foreach ($file in $files) {
         $null = $sb.AppendLine("                        Name=""$ServiceName""")
         $null = $sb.AppendLine("                        Stop=""both""")
         $null = $sb.AppendLine("                        Remove=""uninstall""")
-        $null = $sb.AppendLine("                        Wait=""no"" />")
+        $null = $sb.AppendLine("                        Wait=\"yes\" />")  # wait for service to reach Stopped before CA_NotifyUninstall fires
     } elseif ($isConfig) {
         $null = $sb.AppendLine("        <File Id=""$fileId"" Source=""`$(AgentBinDir)\$relPath"" Vital=""no"" />")
     } else {

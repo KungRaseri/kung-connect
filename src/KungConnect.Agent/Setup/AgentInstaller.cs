@@ -138,6 +138,42 @@ internal static class AgentInstaller
     public static void WriteSettings(string settingsPath, string serverUrl, string machineAlias)
         => PersistSettings(settingsPath, serverUrl, machineAlias);
 
+    /// <summary>
+    /// Called by platform uninstallers (MSI CA_NotifyUninstall) just before files are removed.
+    /// Reads the current config, POSTs to the server to set the machine status to Uninstalled,
+    /// and returns silently — any failure is logged but does not block the uninstall.
+    /// </summary>
+    public static async Task NotifyUninstallAsync(string settingsPath)
+    {
+        try
+        {
+            if (!File.Exists(settingsPath)) return;
+            var root   = JsonNode.Parse(File.ReadAllText(settingsPath)) as JsonObject;
+            var agent  = root?["Agent"] as JsonObject;
+            var serverUrl     = agent?["ServerUrl"]?.GetValue<string>() ?? "";
+            var machineSecret = agent?["MachineSecret"]?.GetValue<string>() ?? "";
+
+            if (string.IsNullOrWhiteSpace(serverUrl) || string.IsNullOrWhiteSpace(machineSecret))
+            {
+                Console.WriteLine("[KungConnect Agent] notify-uninstall: no config found, skipping.");
+                return;
+            }
+
+            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var url     = $"{serverUrl.TrimEnd('/')}/api/machines/notify-uninstall";
+            var payload = System.Text.Json.JsonSerializer.Serialize(new { MachineSecret = machineSecret });
+            var content = new System.Net.Http.StringContent(payload, System.Text.Encoding.UTF8, "application/json");
+
+            var resp = await http.PostAsync(url, content);
+            Console.WriteLine($"[KungConnect Agent] notify-uninstall: server responded {(int)resp.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            // Best-effort — never block the uninstall
+            Console.WriteLine($"[KungConnect Agent] notify-uninstall failed (non-fatal): {ex.Message}");
+        }
+    }
+
     private static void PersistSettings(string path, string serverUrl, string alias)
     {
         JsonObject root;

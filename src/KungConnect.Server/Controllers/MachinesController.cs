@@ -183,6 +183,30 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
             machine.OsType, machine.Status, machine.AgentVersion, machine.LastSeen));
     }
 
+    /// <summary>
+    /// Called by the agent's --notify-uninstall mode (WiX CA) just before files are removed.
+    /// Marks the machine as Uninstalled so the dashboard can distinguish it from a simple restart.
+    /// No user JWT required — the machine secret is the credential.
+    /// </summary>
+    [HttpPost("notify-uninstall")]
+    [AllowAnonymous]
+    public async Task<IActionResult> NotifyUninstall([FromBody] NotifyUninstallRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.MachineSecret))
+            return BadRequest();
+
+        var machine = await db.Machines
+            .FirstOrDefaultAsync(m => m.MachineSecret == request.MachineSecret);
+        if (machine is null) return NotFound();
+
+        machine.Status = MachineStatus.Uninstalled;
+        machine.SignalRConnectionId = null;
+        await db.SaveChangesAsync();
+
+        logger.LogInformation("Machine {Id} ({Alias}) reported uninstall", machine.Id, machine.Alias);
+        return NoContent();
+    }
+
     private bool CanAccess(MachineEntity machine) =>
         User.IsInRole(Roles.Admin) || machine.OwnerId == CurrentUserId || machine.OwnerId == null;
 }

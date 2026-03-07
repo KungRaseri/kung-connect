@@ -682,6 +682,15 @@ code {
     border-color: #166534;
 }
 
+.machine-card.uninstalled {
+    border-color: #78350f;
+    opacity: .85;
+}
+
+.machine-card.uninstalled .machine-status-dot {
+    background: #d97706;
+}
+
 .machine-card-header {
     display: flex;
     align-items: center;
@@ -820,6 +829,12 @@ code {
     background: #1e293b;
     color: #94a3b8;
     border: 1px solid #334155;
+}
+
+.machine-status-badge.uninstalled {
+    background: #1c1107;
+    color: #fbbf24;
+    border: 1px solid #78350f;
 }
 
 .form-floating>.form-control-plaintext::placeholder,

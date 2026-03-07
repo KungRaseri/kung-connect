@@ -62,9 +62,13 @@ public class MachineRegistry(IServiceScopeFactory scopeFactory, ILogger<MachineR
         var machine = await db.Machines.FindAsync([machineId], ct);
         if (machine is null) return;
 
-        machine.Status = MachineStatus.Offline;
         machine.SignalRConnectionId = null;
         machine.LastSeen = DateTimeOffset.UtcNow;
+
+        // Don't downgrade from Uninstalled — the uninstall CA already set the final status.
+        if (machine.Status != MachineStatus.Uninstalled)
+            machine.Status = MachineStatus.Offline;
+
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Machine {Id} ({Alias}) went offline", machineId, machine.Alias);
     }

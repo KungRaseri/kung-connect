@@ -37,6 +37,16 @@ internal static class Program
             return;
         }
 
+        // ── Uninstall notify mode ─────────────────────────────────────────────────
+        // Called by platform uninstallers (MSI CA_NotifyUninstall) just before files are removed:
+        //   KungConnect.Agent --notify-uninstall
+        // Reads appsettings.json, POSTs to the server to mark the machine Uninstalled, then exits.
+        if (args.Contains("--notify-uninstall"))
+        {
+            AgentInstaller.NotifyUninstallAsync(settingsPath).GetAwaiter().GetResult();
+            return;
+        }
+
         // ── First-run detection ───────────────────────────────────────────────
         var preConfig = new ConfigurationBuilder()
             .AddJsonFile(settingsPath, optional: true)

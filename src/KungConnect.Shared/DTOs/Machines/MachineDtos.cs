@@ -12,6 +12,9 @@ public record ProvisionMachineResponse(Guid MachineId, string Secret, string Con
 /// <summary>Claim an unowned self-registered machine and optionally rename it.</summary>
 public record ClaimMachineRequest(string? Alias);
 
+/// <summary>Sent by the agent's --notify-uninstall mode before files are removed. No JWT required; machine secret is the credential.</summary>
+public record NotifyUninstallRequest(string MachineSecret);
+
 public record RegisterMachineRequest(
     string Alias,
     string Hostname,

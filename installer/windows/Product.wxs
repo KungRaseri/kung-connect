@@ -85,10 +85,35 @@
                   Impersonate="no"
                   Return="check" />
 
+    <!--
+      CA_NotifyUninstall — runs during uninstall AFTER the service is deleted
+      (so the exe is still on disk) but BEFORE files are removed.
+      Calls:  KungConnect.Agent.exe --notify-uninstall
+      which POSTs to the server to mark the machine as Uninstalled.
+      Return="ignore" so a network failure never blocks the uninstall.
+      UPGRADINGPRODUCTCODE guard prevents this from firing during a product upgrade
+      (the agent stays registered in that case).
+    -->
+    <SetProperty Id="CA_NotifyUninstall"
+                 Value='"[INSTALLFOLDER]KungConnect.Agent.exe" --notify-uninstall'
+                 Before="CA_NotifyUninstall"
+                 Sequence="execute" />
+
+    <CustomAction Id="CA_NotifyUninstall"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
     <InstallExecuteSequence>
       <!-- WiX v4: condition is a Condition attribute, not inner text -->
       <Custom Action="CA_ConfigureAgent" After="InstallFiles"
               Condition="SERVERURL &lt;&gt; &quot;&quot;" />
+      <!-- Run after service is deleted (exe still present) but before files are wiped.
+           NOT UPGRADINGPRODUCTCODE ensures this only fires on genuine uninstall. -->
+      <Custom Action="CA_NotifyUninstall" After="DeleteServices"
+              Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
     </InstallExecuteSequence>
 
     <!-- ui:WixUI references the internal built-in InstallDir set.

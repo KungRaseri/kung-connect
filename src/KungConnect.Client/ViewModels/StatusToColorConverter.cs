@@ -18,9 +18,10 @@ public sealed class StatusToColorConverter : IValueConverter
         return value is MachineStatus status
             ? status switch
             {
-                MachineStatus.Online    => Colors.LimeGreen,
-                MachineStatus.InSession => Colors.Orange,
-                _                       => Colors.Gray
+                MachineStatus.Online      => Colors.LimeGreen,
+                MachineStatus.InSession   => Colors.Orange,
+                MachineStatus.Uninstalled => Colors.Goldenrod,
+                _                         => Colors.Gray
             }
             : Colors.Gray;
     }
