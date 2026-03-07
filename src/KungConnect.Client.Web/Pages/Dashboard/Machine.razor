@@ -347,21 +347,33 @@
         try
         {
             var resp = await Http.PostAsync($"/api/machines/{Id}/check-updates", null);
-            if (resp.IsSuccessStatusCode)
-            {
-                _checkUpdateMessage = "✓ Checking… this may take a few seconds.";
-                // Give the agent time to check and report back, then reload.
-                await Task.Delay(6_000);
-                await LoadAsync();
-                _checkUpdateMessage = string.IsNullOrEmpty(_machine?.UpdateAvailable)
-                    ? "✓ Agent is up-to-date."
-                    : null; // badge already shows the version
-            }
-            else
+            if (!resp.IsSuccessStatusCode)
             {
                 var err = await resp.Content.ReadFromJsonAsync<ApiError>();
-                _checkUpdateMessage = $"⚠️ {err?.Error ?? $"Server returned {(int)resp.StatusCode}."}";
+                _checkUpdateMessage = $"⚠️ {err?.Error ?? $"Server returned {(int)resp.StatusCode}."}";                return;
             }
+
+            _checkUpdateMessage = "Checking…";
+
+            // Poll the machine detail every 2 s for up to 20 s, stopping as soon as
+            // UpdateAvailable is set (the agent reported back) or we time out.
+            var deadline = DateTime.UtcNow.AddSeconds(20);
+            while (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(2_000);
+                await LoadAsync();
+                StateHasChanged();
+                if (!string.IsNullOrEmpty(_machine?.UpdateAvailable))
+                {
+                    // Badge already shows the version — clear the status line.
+                    _checkUpdateMessage = null;
+                    return;
+                }
+            }
+
+            // Timed out — agent either has no update or GitHub is not configured.
+            _checkUpdateMessage = "No update found. If GitHub is not configured on this agent "
+                                + "(Agent__GitHubOwner / Agent__GitHubRepo), checks will not run.";
         }
         catch (Exception ex)
         {

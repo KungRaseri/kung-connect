@@ -53,7 +53,21 @@ public sealed class UpdateCheckerService(
     {
         if (string.IsNullOrWhiteSpace(_opts.GitHubOwner) || string.IsNullOrWhiteSpace(_opts.GitHubRepo))
         {
-            logger.LogDebug("UpdateChecker: GitHubOwner/GitHubRepo not configured — update checking disabled.");
+            // GitHub not configured: automatic checks are disabled, but keep the service alive
+            // so on-demand TriggerNow() calls produce a clear warning instead of silently
+            // doing nothing (which makes the dashboard show "Agent is up-to-date" incorrectly).
+            logger.LogWarning(
+                "UpdateChecker: GitHubOwner/GitHubRepo not set — automatic update checks disabled. "
+              + "Set Agent__GitHubOwner and Agent__GitHubRepo in appsettings.json to enable.");
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try { await Task.WhenAny(_trigger.Task, Task.Delay(Timeout.Infinite, stoppingToken)); }
+                catch (OperationCanceledException) { return; }
+                _trigger = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                logger.LogWarning(
+                    "UpdateChecker: on-demand check requested but GitHub is not configured. "
+                  + "Set Agent__GitHubOwner and Agent__GitHubRepo in appsettings.json.");
+            }
             return;
         }
 
@@ -109,22 +123,28 @@ public sealed class UpdateCheckerService(
             }
 
             // Compare against the currently running assembly version.
+            // Normalise both to 3 components: .NET assembly versions are 4-part (1.0.0.0, revision=0)
+            // while GitHub tags are 3-part (v1.0.0, revision=-1).  Without normalisation
+            // Version("1.0.0") < Version("1.0.0.0") in .NET's comparator, which would make
+            // a matching GitHub release appear older than the installed version.
             var current = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+            var latestNorm  = new Version(latestVersion.Major, latestVersion.Minor, Math.Max(0, latestVersion.Build));
+            var currentNorm = new Version(current.Major,       current.Minor,       Math.Max(0, current.Build));
 
-            if (latestVersion <= current)
+            if (latestNorm <= currentNorm)
             {
                 logger.LogDebug("UpdateChecker: agent is up-to-date (current={Current}, latest={Latest})",
-                    current.ToString(3), latestVersion.ToString(3));
+                    currentNorm, latestNorm);
                 return;
             }
 
             logger.LogInformation(
                 "UpdateChecker: new release found — {Current} → {Latest} ({Url})",
-                current.ToString(3), latestVersion.ToString(3), release.HtmlUrl);
+                currentNorm, latestNorm, release.HtmlUrl);
 
             // Surface the update in the system tray immediately, even if the hub is not yet
             // connected.  The tray polls AgentConnectionStatus every second.
-            agentStatus.UpdateAvailableVersion = latestVersion.ToString(3);
+            agentStatus.UpdateAvailableVersion = latestNorm.ToString();
             agentStatus.UpdateAvailableUrl     = release.HtmlUrl ?? string.Empty;
 
             if (!signalingClient.IsConnected)
@@ -137,11 +157,11 @@ public sealed class UpdateCheckerService(
             await signalingClient.Connection.InvokeAsync(
                 SignalingEvents.AgentUpdateAvailable,
                 _opts.MachineSecret,
-                latestVersion.ToString(3),
+                latestNorm.ToString(),
                 release.HtmlUrl ?? string.Empty,
                 ct);
 
-            logger.LogInformation("UpdateChecker: server notified of update to v{Version}", latestVersion.ToString(3));
+            logger.LogInformation("UpdateChecker: server notified of update to v{Version}", latestNorm);
         }
         catch (OperationCanceledException) { throw; }
         catch (HttpRequestException ex)
