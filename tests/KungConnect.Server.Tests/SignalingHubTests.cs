@@ -39,6 +39,7 @@ public sealed class SignalingHubTests
                    .Returns(new Mock<ISingleClientProxy>().Object);
 
         var hub = new SignalingHub(db, machineReg.Object, joinCodeSvc,
+            new UpdateCheckStatusCache(),
             NullLogger<SignalingHub>.Instance);
 
         // Inject the hub context
@@ -100,6 +101,7 @@ public sealed class SignalingHubTests
                    .Returns(new Mock<ISingleClientProxy>().Object);
 
         var hub = new SignalingHub(db, new Mock<IMachineRegistry>().Object, joinCodeSvc,
+            new UpdateCheckStatusCache(),
             NullLogger<SignalingHub>.Instance);
 
         var ctx = new Mock<HubCallerContext>();
