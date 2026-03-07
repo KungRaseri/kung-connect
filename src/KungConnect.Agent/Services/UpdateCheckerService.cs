@@ -18,6 +18,7 @@ namespace KungConnect.Agent.Services;
 /// </summary>
 public sealed class UpdateCheckerService(
     ISignalingClientService signalingClient,
+    AgentConnectionStatus agentStatus,
     IOptions<AgentOptions> agentOptions,
     ILogger<UpdateCheckerService> logger) : BackgroundService
 {
@@ -43,9 +44,9 @@ public sealed class UpdateCheckerService(
             return;
         }
 
-        // Wait a short time on startup so the hub connection is likely established before
-        // the first check tries to invoke a hub method.
-        try { await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken); }
+        // Wait on startup so the hub connection is established before the first
+        // check tries to invoke a hub method.  30 s is enough for normal startup.
+        try { await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken); }
         catch (OperationCanceledException) { return; }
 
         var intervalHours = Math.Max(1, _opts.UpdateCheckIntervalHours);
@@ -91,6 +92,11 @@ public sealed class UpdateCheckerService(
             logger.LogInformation(
                 "UpdateChecker: new release found — {Current} → {Latest} ({Url})",
                 current.ToString(3), latestVersion.ToString(3), release.HtmlUrl);
+
+            // Surface the update in the system tray immediately, even if the hub is not yet
+            // connected.  The tray polls AgentConnectionStatus every second.
+            agentStatus.UpdateAvailableVersion = latestVersion.ToString(3);
+            agentStatus.UpdateAvailableUrl     = release.HtmlUrl ?? string.Empty;
 
             if (!signalingClient.IsConnected)
             {

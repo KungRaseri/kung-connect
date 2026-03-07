@@ -17,6 +17,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly AgentConnectionStatus   _status;
     private readonly NotifyIcon              _notifyIcon;
     private readonly ToolStripMenuItem       _statusItem;
+    private readonly ToolStripMenuItem       _updateMenuItem;
     private readonly System.Windows.Forms.Timer _pollTimer;
 
     // Pre-built icons keyed by state — created once at startup and reused.
@@ -25,10 +26,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
         [AgentState.Starting]     = MakeCircleIcon(Color.SteelBlue),
         [AgentState.Connecting]   = MakeCircleIcon(Color.DodgerBlue),
         [AgentState.Connected]    = MakeCircleIcon(Color.LimeGreen),
-        [AgentState.Disconnected] = MakeCircleIcon(Color.DimGray),
+        [AgentState.Disconnected] = MakeCircleIcon(Color.Crimson),   // red = offline
     };
 
-    private AgentState _lastState = (AgentState)(-1);
+    private AgentState _lastState         = (AgentState)(-1);
+    private string?    _lastUpdateVersion = null;
 
     public TrayApplicationContext(IHost host, AgentConnectionStatus status)
     {
@@ -36,6 +38,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _status = status;
 
         _statusItem = new ToolStripMenuItem("Starting...") { Enabled = false };
+
+        _updateMenuItem = new ToolStripMenuItem("⬆ Update available") { Visible = false };
+        _updateMenuItem.Click += OnOpenUpdatePage;
 
         var menu = new ContextMenuStrip();
         menu.Items.Add(new ToolStripMenuItem("KungConnect Agent")
@@ -45,6 +50,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_statusItem);
+        menu.Items.Add(_updateMenuItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, OnExit);
 
@@ -71,6 +77,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void Poll()
     {
+        PollConnectionState();
+        PollUpdateAvailable();
+    }
+
+    private void PollConnectionState()
+    {
         var state = _status.State;
         if (state == _lastState) return;
         _lastState = state;
@@ -90,7 +102,41 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _notifyIcon.Icon = _icons.GetValueOrDefault(state, _icons[AgentState.Starting]);
     }
 
+    private void PollUpdateAvailable()
+    {
+        var version = _status.UpdateAvailableVersion;
+        if (version == _lastUpdateVersion) return;
+        _lastUpdateVersion = version;
+
+        if (string.IsNullOrEmpty(version))
+        {
+            _updateMenuItem.Visible = false;
+            return;
+        }
+
+        _updateMenuItem.Text    = $"⬆ Update available — v{version}";
+        _updateMenuItem.Visible = true;
+
+        // Show a balloon the first time the update is detected.
+        _notifyIcon.BalloonTipTitle = "KungConnect update available";
+        _notifyIcon.BalloonTipText  = $"Version {version} is available. Click the tray icon to download.";
+        _notifyIcon.BalloonTipIcon  = ToolTipIcon.Info;
+        _notifyIcon.ShowBalloonTip(8_000);
+    }
+
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
+
+    // ── Update ─────────────────────────────────────────────────────────────────
+
+    private void OnOpenUpdatePage(object? sender, EventArgs e)
+    {
+        var url = _status.UpdateAvailableUrl;
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+            catch { /* best effort */ }
+        }
+    }
 
     // ── Exit ───────────────────────────────────────────────────────────────────
 

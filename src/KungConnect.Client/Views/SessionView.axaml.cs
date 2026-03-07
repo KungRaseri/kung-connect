@@ -67,6 +67,10 @@ public partial class SessionView : UserControl
         { Key.LaunchApplication1, 0xB6 }, { Key.LaunchApplication2, 0xB7 },
         // OEM punctuation (US keyboard layout)
         { Key.OemSemicolon,     0xBA },  // ;:
+        { Key.OemPlus,          0xBB },  // =+
+        { Key.OemComma,         0xBC },  // ,<
+        { Key.OemMinus,         0xBD },  // -_
+        { Key.OemPeriod,        0xBE },  // .>
         { Key.OemQuestion,      0xBF },  // /?
         { Key.Oem3,             0xC0 },  // `~
         { Key.OemOpenBrackets,  0xDB },  // [{
