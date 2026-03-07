@@ -121,8 +121,13 @@ public partial class App : Application
     {
         var sc = new ServiceCollection();
 
-        // HTTP client — base address resolved from launch URI or env var
-        sc.AddHttpClient("KungConnect", c => c.BaseAddress = new System.Uri(serverUrl));
+        // HTTP client — base address resolved from launch URI or env var.
+        // AuthHeaderHandler injects the Bearer token into every request so all
+        // services (MachineService, SessionService, …) are automatically authorised
+        // without each one needing to know about IAuthService.
+        sc.AddTransient<AuthHeaderHandler>();
+        sc.AddHttpClient("KungConnect", c => c.BaseAddress = new System.Uri(serverUrl))
+          .AddHttpMessageHandler<AuthHeaderHandler>();
 
         // Make the launch context available for injection into MainWindowViewModel
         sc.AddSingleton(launch);

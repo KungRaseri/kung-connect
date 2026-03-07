@@ -28,7 +28,11 @@ public static class SystemInfoCollector
         try { info.TotalRamBytes = (long)GC.GetGCMemoryInfo().TotalAvailableMemoryBytes; } catch { }
 
         // OS
-        info.OsDescription  = RuntimeInformation.OSDescription;
+        // RuntimeInformation.OSDescription returns the NT kernel version string
+        // (e.g. "Microsoft Windows 10.0.26200"), which reports Windows 11 as "10.0"
+        // because Microsoft kept the major version at 10 for Windows 11.
+        // Replace with a proper human-readable name on Windows.
+        info.OsDescription  = GetFriendlyOsDescription();
         info.OsArchitecture = RuntimeInformation.OSArchitecture.ToString();
         info.RuntimeVersion = Environment.Version.ToString(3);
 
@@ -40,6 +44,36 @@ public static class SystemInfoCollector
         try { CollectDisks(info); } catch { }
 
         return info;
+    }
+
+    // ── OS description ────────────────────────────────────────────────────────
+
+    private static string GetFriendlyOsDescription()
+    {
+#if WINDOWS
+        // On Windows, RuntimeInformation.OSDescription returns the NT kernel string
+        // (e.g. "Microsoft Windows 10.0.26200"). Windows 11 kept the major.minor at
+        // 10.0, so we detect it by build number (22000 = 21H2, 22621 = 22H2, 26100 = 24H2, …).
+        var ver = Environment.OSVersion.Version;
+        if (ver.Build >= 22000)
+        {
+            // Map well-known Windows 11 builds to their marketing names.
+            var release = ver.Build switch
+            {
+                22000 => "21H2",
+                22621 => "22H2",
+                22631 => "23H2",
+                26100 => "24H2",
+                _     => null
+            };
+            return release is null
+                ? $"Windows 11 (Build {ver.Build})"
+                : $"Windows 11 {release} (Build {ver.Build})";
+        }
+        return RuntimeInformation.OSDescription;
+#else
+        return RuntimeInformation.OSDescription;
+#endif
     }
 
     // ── Network ───────────────────────────────────────────────────────────────
