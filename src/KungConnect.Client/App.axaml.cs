@@ -125,7 +125,7 @@ public partial class App : Application
         // AuthHeaderHandler injects the Bearer token into every request so all
         // services (MachineService, SessionService, …) are automatically authorised
         // without each one needing to know about IAuthService.
-        sc.AddTransient<AuthHeaderHandler>();
+        sc.AddSingleton<AuthHeaderHandler>();
         sc.AddHttpClient("KungConnect", c => c.BaseAddress = new System.Uri(serverUrl))
           .AddHttpMessageHandler<AuthHeaderHandler>();
 

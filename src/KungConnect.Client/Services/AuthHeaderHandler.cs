@@ -9,24 +9,32 @@ namespace KungConnect.Client.Services;
 /// <summary>
 /// Delegating handler that injects the current Bearer token into every outgoing
 /// HTTP request for the "KungConnect" named client.
-///
-/// Uses <see cref="IServiceProvider"/> to resolve <see cref="IAuthService"/>
-/// lazily (i.e. only when the first request is actually sent) to avoid the
-/// circular construction dependency that would occur if we took
-/// <see cref="IAuthService"/> directly in the constructor — AuthService itself
-/// creates an HttpClient during its constructor, which would trigger handler
-/// construction, which would require AuthService, which isn't built yet.
+/// Registered as Singleton so it captures the ROOT IServiceProvider (not a
+/// short-lived scope), ensuring IAuthService always resolves to the same
+/// singleton instance that SetTokens() was called on.
 /// </summary>
 public sealed class AuthHeaderHandler(IServiceProvider sp) : DelegatingHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken ct)
     {
-        // Only inject if the request doesn't already carry its own Authorization header.
         if (request.Headers.Authorization is null)
         {
             var auth = sp.GetService<IAuthService>();
-            if (auth?.AccessToken is { Length: > 0 } token)
+            var token = auth?.AccessToken;
+
+            // Debug trace — remove after confirming fix
+            try
+            {
+                var log = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "kc-auth-handler.log");
+                System.IO.File.AppendAllText(log,
+                    $"[{System.DateTime.Now:HH:mm:ss}] {request.Method} {request.RequestUri} " +
+                    $"auth={auth is not null} token={token?.Length ?? -1}\n");
+            }
+            catch { /* ignore logging failures */ }
+
+            if (token is { Length: > 0 })
                 request.Headers.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
         }

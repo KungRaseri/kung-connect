@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+
 namespace KungConnect.Shared.Enums;
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ConnectionType
 {
     /// <summary>Persistent installed agent.</summary>

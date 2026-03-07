@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:KungConnect.Client.ViewModels"
+        xmlns:conv="using:Avalonia.Data.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="750"
@@ -11,8 +12,50 @@
         Width="1200" Height="750"
         MinWidth="800" MinHeight="500">
 
-    <!-- The ViewLocator (registered as a DataTemplate in App.axaml)
-         maps each ViewModel type to its matching View automatically. -->
-    <ContentControl Content="{Binding CurrentPage}"/>
+    <DockPanel>
+        <!-- Update notification banner — visible only when a newer release is detected -->
+        <!-- Blue = optional, red = required ([REQUIRED] in GitHub release body) -->
+        <Panel DockPanel.Dock="Top"
+               IsVisible="{Binding UpdateVersion, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}">
+            <Border Background="#b91c1c" Padding="14,7" IsVisible="{Binding UpdateIsRequired}"/>
+            <Border Background="#1d4ed8" Padding="14,7" IsVisible="{Binding !UpdateIsRequired}"/>
+            <DockPanel Margin="14,7">
+                <Button DockPanel.Dock="Right"
+                        Content="✕"
+                        Background="Transparent"
+                        Foreground="White"
+                        BorderThickness="0"
+                        Padding="6,2"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding !UpdateIsRequired}"
+                        Command="{Binding DismissUpdateCommand}"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <TextBlock Foreground="White"
+                               FontSize="13"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding !UpdateIsRequired}"
+                               Text="{Binding UpdateVersion, StringFormat='🔄  KungConnect {0} is available  —'}"/>
+                    <TextBlock Foreground="White"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding UpdateIsRequired}"
+                               Text="{Binding UpdateVersion, StringFormat='⚠  KungConnect {0} is required to connect  —'}"/>
+                    <Button Content="Download"
+                            Background="Transparent"
+                            Foreground="#93c5fd"
+                            BorderThickness="0"
+                            FontSize="13"
+                            Padding="0"
+                            VerticalAlignment="Center"
+                            Command="{Binding OpenUpdateCommand}"/>
+                </StackPanel>
+            </DockPanel>
+        </Panel>
+
+        <!-- The ViewLocator (registered as a DataTemplate in App.axaml)
+             maps each ViewModel type to its matching View automatically. -->
+        <ContentControl Content="{Binding CurrentPage}"/>
+    </DockPanel>
 
 </Window>

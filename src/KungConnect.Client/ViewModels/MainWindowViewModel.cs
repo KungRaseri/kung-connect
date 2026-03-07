@@ -44,6 +44,9 @@ public partial class MainWindowViewModel : ShellViewModelBase
             CurrentPage = new LoadingViewModel("Connecting…");
             _ = HandleLaunchAsync();
         }
+
+        // Check for a newer release in the background (non-blocking, fails silently)
+        _ = CheckForClientUpdateAsync();
     }
 
     // ── URI-launch flow ───────────────────────────────────────────────────────
@@ -53,14 +56,39 @@ public partial class MainWindowViewModel : ShellViewModelBase
         var loading = (LoadingViewModel)CurrentPage;
         try
         {
+            // Run update check concurrently with a 5-second cap so it never
+            // meaningfully delays the launch on a fast connection.
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var updateTask = ClientUpdateChecker.CheckAsync(cts.Token);
+
             switch (_launch.Mode)
             {
                 case LaunchMode.Session:
+                    // Await the update check before connecting — but only block
+                    // if the release is marked [REQUIRED].  Otherwise continue
+                    // regardless of the outcome (non-blocking).
+                    var update = await updateTask.ConfigureAwait(false);
+                    if (update is not null)
+                    {
+                        UpdateVersion    = update.Version;
+                        UpdateUrl        = update.Url;
+                        UpdateIsRequired = update.IsRequired;
+
+                        if (update.IsRequired)
+                        {
+                            loading.ErrorMessage =
+                                $"Update {update.Version} is required before connecting. " +
+                                "Please download and install the latest version.";
+                            return;   // ← block the session until updated
+                        }
+                    }
                     await HandleSessionLaunchAsync();
                     break;
+
                 case LaunchMode.AdHoc:
                     await HandleAdHocLaunchAsync();
                     break;
+
                 case LaunchMode.Join:
                     await HandleJoinLaunchAsync();
                     break;
@@ -75,12 +103,22 @@ public partial class MainWindowViewModel : ShellViewModelBase
     /// <summary>Operator launched with a specific registered machine.</summary>
     private async Task HandleSessionLaunchAsync()
     {
-        _auth.SetTokens(_launch.AccessToken!);
-        await _signaling.ConnectAsync(_launch.AccessToken!);
+        if (string.IsNullOrEmpty(_launch.AccessToken))
+            throw new InvalidOperationException("No access token in launch URI.");
 
-        var machine = _launch.MachineId is { } mid
-            ? await _machines.GetMachineAsync(mid)
-            : null;
+        _auth.SetTokens(_launch.AccessToken);
+
+        try { await _signaling.ConnectAsync(_launch.AccessToken); }
+        catch (Exception ex) { throw new Exception($"SignalR connect failed: {ex.Message}", ex); }
+
+        MachineDto? machine;
+        try
+        {
+            machine = _launch.MachineId is { } mid
+                ? await _machines.GetMachineAsync(mid)
+                : null;
+        }
+        catch (Exception ex) { throw new Exception($"Get machine failed: {ex.Message}", ex); }
 
         if (machine is null)
         {
@@ -139,6 +177,23 @@ public partial class MainWindowViewModel : ShellViewModelBase
         session.SessionEnded += OnSessionEnded;
         CurrentPage = session;
         _ = session.StartAsync();
+    }
+
+    // ── Update check ─────────────────────────────────────────────────────────
+
+    private async Task CheckForClientUpdateAsync()
+    {
+        // URI-launch modes run the check inside HandleLaunchAsync (so it can
+        // gate on IsRequired).  This path covers Normal (login screen) startup.
+        if (_launch.Mode != LaunchMode.Normal) return;
+
+        var update = await ClientUpdateChecker.CheckAsync();
+        if (update is not null)
+        {
+            UpdateVersion    = update.Version;
+            UpdateUrl        = update.Url;
+            UpdateIsRequired = update.IsRequired;
+        }
     }
 
     private async void OnSessionEnded(object? sender, EventArgs e)
