@@ -356,24 +356,37 @@
             _checkUpdateMessage = "Checking…";
 
             // Poll the machine detail every 2 s for up to 20 s, stopping as soon as
-            // UpdateAvailable is set (the agent reported back) or we time out.
+            // the agent reports back via AgentUpdateCheckStatus or an update is found.
             var deadline = DateTime.UtcNow.AddSeconds(20);
             while (DateTime.UtcNow < deadline)
             {
                 await Task.Delay(2_000);
                 await LoadAsync();
                 StateHasChanged();
+
                 if (!string.IsNullOrEmpty(_machine?.UpdateAvailable))
                 {
                     // Badge already shows the version — clear the status line.
                     _checkUpdateMessage = null;
                     return;
                 }
+
+                if (_machine?.UpdateCheckStatus == "up-to-date")
+                {
+                    _checkUpdateMessage = "No update found.";
+                    return;
+                }
+
+                if (_machine?.UpdateCheckStatus == "github-not-configured")
+                {
+                    _checkUpdateMessage = "⚠️ GitHub is not configured on this agent. "
+                                       + "Set Agent__GitHubOwner and Agent__GitHubRepo in appsettings.json.";
+                    return;
+                }
             }
 
-            // Timed out — agent either has no update or GitHub is not configured.
-            _checkUpdateMessage = "No update found. If GitHub is not configured on this agent "
-                                + "(Agent__GitHubOwner / Agent__GitHubRepo), checks will not run.";
+            // Timed out — agent didn't respond (offline, slow network, etc.)
+            _checkUpdateMessage = "No update found.";
         }
         catch (Exception ex)
         {
@@ -400,5 +413,6 @@
         bool AutoAcceptSessions,
         bool IsClaimed,
         string ConfigSnippet,
-        string? UpdateAvailable = null);
+        string? UpdateAvailable = null,
+        string? UpdateCheckStatus = null);
 }

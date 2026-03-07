@@ -57,6 +57,7 @@ builder.Services.AddAuthorization();
 // ── Application Services ─────────────────────────────────────────────────────
 builder.Services.AddSingleton<IMachineRegistry, MachineRegistry>();builder.Services.AddSingleton<ISetupService, SetupService>();builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IJoinCodeService, JoinCodeService>();
+builder.Services.AddSingleton<UpdateCheckStatusCache>();
 
 // ── SignalR ──────────────────────────────────────────────────────────────────
 builder.Services.AddSignalR(opts =>

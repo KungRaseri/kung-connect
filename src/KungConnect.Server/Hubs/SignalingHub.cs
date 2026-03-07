@@ -21,6 +21,7 @@ public class SignalingHub(
     AppDbContext db,
     IMachineRegistry machineRegistry,
     IJoinCodeService joinCodeService,
+    UpdateCheckStatusCache updateCheckStatusCache,
     ILogger<SignalingHub> logger) : Hub
 {
     // ── Connection lifecycle ─────────────────────────────────────────────────
@@ -141,6 +142,9 @@ public class SignalingHub(
         dbMachine.UpdateAvailable = latestVersion;
         await db.SaveChangesAsync();
 
+        // Clear any "up-to-date" / "github-not-configured" status — the update badge takes over.
+        updateCheckStatusCache.Clear(machine.Id);
+
         logger.LogInformation(
             "Machine {Id} ({Alias}): update available → v{Version}",
             machine.Id, machine.Alias, latestVersion);
@@ -148,6 +152,19 @@ public class SignalingHub(
         // Notify all connected dashboard clients so the badge shows up live.
         await Clients.All.SendAsync(
             SignalingEvents.MachineUpdateAvailable, machine.Id, latestVersion, downloadUrl);
+    }
+
+    /// <summary>
+    /// Called by the agent after each update check (both scheduled and on-demand).
+    /// Stores the result so the machine detail API can surface it to the dashboard.
+    /// Status values: "up-to-date" | "github-not-configured".
+    /// </summary>
+    [AllowAnonymous]
+    public async Task AgentUpdateCheckStatus(string machineSecret, string status)
+    {
+        var machine = await machineRegistry.AuthenticateAsync(machineSecret);
+        if (machine is null) return;
+        updateCheckStatusCache.Set(machine.Id, status);
     }
 
     // ── Session approval flow ────────────────────────────────────────────────

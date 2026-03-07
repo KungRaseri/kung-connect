@@ -53,7 +53,8 @@ public record MachineDetailDto(
     bool AutoAcceptSessions,
     bool IsClaimed,
     string ConfigSnippet,
-    string? UpdateAvailable = null);
+    string? UpdateAvailable = null,
+    string? UpdateCheckStatus = null);
 
 /// <summary>Payload for PATCH /api/machines/{id} — rename a machine.</summary>
 public record UpdateMachineRequest(string Alias);

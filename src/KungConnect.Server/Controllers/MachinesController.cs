@@ -20,6 +20,7 @@ public class MachinesController(
     AppDbContext db,
     IHubContext<SignalingHub> hubContext,
     IMachineRegistry machineRegistry,
+    UpdateCheckStatusCache updateCheckStatusCache,
     ILogger<MachinesController> logger) : ControllerBase
 {
     private Guid CurrentUserId =>
@@ -73,7 +74,8 @@ public class MachinesController(
             machine.OsType, machine.Status, machine.AgentVersion,
             machine.LastSeen, machine.RegisteredAt,
             machine.MachineSecret, machine.AutoAcceptSessions,
-            machine.OwnerId is not null, snippet, machine.UpdateAvailable));
+            machine.OwnerId is not null, snippet, machine.UpdateAvailable,
+            updateCheckStatusCache.Get(id)));
     }
 
     /// <summary>Rename a machine.</summary>
@@ -228,6 +230,9 @@ public class MachinesController(
         var connId = await machineRegistry.GetConnectionIdAsync(id);
         if (connId is null)
             return Conflict(new { error = "Machine is offline — update check cannot be triggered remotely." });
+
+        // Clear any stale result so the dashboard polling loop waits for a fresh response.
+        updateCheckStatusCache.Clear(id);
 
         await hubContext.Clients.Client(connId)
             .SendAsync(SignalingEvents.CheckForUpdates);

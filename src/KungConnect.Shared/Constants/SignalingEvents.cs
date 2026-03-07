@@ -40,6 +40,9 @@ public static class SignalingEvents
     public const string MachineUpdateAvailable = "MachineUpdateAvailable";
     /// <summary>Server → Agent: dashboard user requested an immediate update check. No args.</summary>
     public const string CheckForUpdates        = "CheckForUpdates";
+    /// <summary>Agent → Server: result of an update check.
+    /// Args: machineSecret (string), status ("up-to-date" | "github-not-configured").</summary>
+    public const string AgentUpdateCheckStatus = "AgentUpdateCheckStatus";
 
     // ── Join-code flow (both directions) ────────────────────────────────────
     /// <summary>Server → Admin: customer has connected with the code. Payload: targetConnectionId.</summary>

@@ -67,6 +67,16 @@ public sealed class UpdateCheckerService(
                 logger.LogWarning(
                     "UpdateChecker: on-demand check requested but GitHub is not configured. "
                   + "Set Agent__GitHubOwner and Agent__GitHubRepo in appsettings.json.");
+                if (signalingClient.IsConnected)
+                {
+                    try
+                    {
+                        await signalingClient.Connection.InvokeAsync(
+                            SignalingEvents.AgentUpdateCheckStatus,
+                            _opts.MachineSecret, "github-not-configured");
+                    }
+                    catch { /* best-effort */ }
+                }
             }
             return;
         }
@@ -135,6 +145,16 @@ public sealed class UpdateCheckerService(
             {
                 logger.LogDebug("UpdateChecker: agent is up-to-date (current={Current}, latest={Latest})",
                     currentNorm, latestNorm);
+                if (signalingClient.IsConnected)
+                {
+                    try
+                    {
+                        await signalingClient.Connection.InvokeAsync(
+                            SignalingEvents.AgentUpdateCheckStatus,
+                            _opts.MachineSecret, "up-to-date", ct);
+                    }
+                    catch { /* best-effort */ }
+                }
                 return;
             }
 
