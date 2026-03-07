@@ -38,6 +38,8 @@ public static class SignalingEvents
     /// <summary>Server → Dashboard clients (receive): a machine has a pending update.
     /// Args: machineId (Guid), latestVersion (string), downloadUrl (string).</summary>
     public const string MachineUpdateAvailable = "MachineUpdateAvailable";
+    /// <summary>Server → Agent: dashboard user requested an immediate update check. No args.</summary>
+    public const string CheckForUpdates        = "CheckForUpdates";
 
     // ── Join-code flow (both directions) ────────────────────────────────────
     /// <summary>Server → Admin: customer has connected with the code. Payload: targetConnectionId.</summary>

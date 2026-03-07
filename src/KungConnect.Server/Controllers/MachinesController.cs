@@ -1,11 +1,14 @@
 using System.Security.Claims;
 using KungConnect.Server.Data;
 using KungConnect.Server.Data.Entities;
+using KungConnect.Server.Hubs;
+using KungConnect.Server.Services;
 using KungConnect.Shared.Constants;
 using KungConnect.Shared.DTOs.Machines;
 using KungConnect.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace KungConnect.Server.Controllers;
@@ -13,7 +16,11 @@ namespace KungConnect.Server.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class MachinesController(AppDbContext db, ILogger<MachinesController> logger) : ControllerBase
+public class MachinesController(
+    AppDbContext db,
+    IHubContext<SignalingHub> hubContext,
+    IMachineRegistry machineRegistry,
+    ILogger<MachinesController> logger) : ControllerBase
 {
     private Guid CurrentUserId =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? Guid.Empty.ToString());
@@ -205,6 +212,28 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
 
         logger.LogInformation("Machine {Id} ({Alias}) reported uninstall", machine.Id, machine.Alias);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Asks a connected agent to perform an immediate update check.
+    /// Returns 202 Accepted if the command was dispatched, 409 if the machine is offline.
+    /// </summary>
+    [HttpPost("{id:guid}/check-updates")]
+    public async Task<IActionResult> RequestUpdateCheck(Guid id)
+    {
+        var machine = await db.Machines.FindAsync(id);
+        if (machine is null) return NotFound();
+        if (!CanAccess(machine)) return Forbid();
+
+        var connId = await machineRegistry.GetConnectionIdAsync(id);
+        if (connId is null)
+            return Conflict(new { error = "Machine is offline — update check cannot be triggered remotely." });
+
+        await hubContext.Clients.Client(connId)
+            .SendAsync(SignalingEvents.CheckForUpdates);
+
+        logger.LogInformation("Update check triggered for machine {Id} ({Alias})", id, machine.Alias);
+        return Accepted();
     }
 
     private bool CanAccess(MachineEntity machine) =>

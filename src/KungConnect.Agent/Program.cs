@@ -89,8 +89,9 @@ internal static class Program
         builder.Services.AddSingleton(agentStatus);
         builder.Services.AddSingleton<ISignalingClientService, SignalingClientService>();
         builder.Services.AddSingleton<SessionHandlerService>();
+        builder.Services.AddSingleton<UpdateCheckerService>();
         builder.Services.AddHostedService<Worker>();
-        builder.Services.AddHostedService<UpdateCheckerService>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<UpdateCheckerService>());
 
         // Keep the host alive even if a connection error leaks out of the
         // Worker retry loop — the service will reconnect on the next attempt.

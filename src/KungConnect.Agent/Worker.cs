@@ -15,6 +15,7 @@ namespace KungConnect.Agent;
 public class Worker(
     ISignalingClientService signalingClient,
     SessionHandlerService sessionHandler,
+    UpdateCheckerService updateChecker,
     IOptions<AgentOptions> agentOptions,
     AgentConnectionStatus agentStatus,
     ILogger<Worker> logger) : BackgroundService
@@ -147,6 +148,12 @@ public class Worker(
                 _sessions.Remove(sessionId);
                 logger.LogInformation("Session {Id} terminated", sessionId);
             }
+        });
+
+        conn.On(SignalingEvents.CheckForUpdates, () =>
+        {
+            logger.LogInformation("Dashboard requested immediate update check");
+            updateChecker.TriggerNow();
         });
     }
 

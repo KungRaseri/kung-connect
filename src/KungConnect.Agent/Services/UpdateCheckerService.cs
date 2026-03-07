@@ -24,6 +24,19 @@ public sealed class UpdateCheckerService(
 {
     private readonly AgentOptions _opts = agentOptions.Value;
 
+    // Completed by TriggerNow() to wake the poll-wait early.
+    private TaskCompletionSource _trigger = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>
+    /// Wakes the background loop immediately so it performs an update check right now
+    /// instead of waiting for the next scheduled interval.
+    /// </summary>
+    public void TriggerNow()
+    {
+        // TrySetResult is a no-op if already completed — safe to call from any thread.
+        _trigger.TrySetResult();
+    }
+
     // GitHub API requires a User-Agent header; reuse a single client for the lifetime of the service.
     private static readonly HttpClient _http = new()
     {
@@ -44,18 +57,34 @@ public sealed class UpdateCheckerService(
             return;
         }
 
-        // Wait on startup so the hub connection is established before the first
-        // check tries to invoke a hub method.  30 s is enough for normal startup.
-        try { await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken); }
+        // Wait on startup so the hub connection is established before the first check.
+        // TriggerNow() can cut this delay short (e.g. when the dashboard requests a check).
+        try
+        {
+            await Task.WhenAny(
+                Task.Delay(TimeSpan.FromSeconds(30), stoppingToken),
+                _trigger.Task);
+            stoppingToken.ThrowIfCancellationRequested();
+        }
         catch (OperationCanceledException) { return; }
 
         var intervalHours = Math.Max(1, _opts.UpdateCheckIntervalHours);
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            // Reset trigger BEFORE checking so a TriggerNow() that arrives during the
+            // check isn't silently dropped — it will cause the next iteration immediately.
+            _trigger = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
             await CheckForUpdateAsync(stoppingToken);
 
-            try { await Task.Delay(TimeSpan.FromHours(intervalHours), stoppingToken); }
+            try
+            {
+                await Task.WhenAny(
+                    Task.Delay(TimeSpan.FromHours(intervalHours), stoppingToken),
+                    _trigger.Task);
+                stoppingToken.ThrowIfCancellationRequested();
+            }
             catch (OperationCanceledException) { break; }
         }
     }
