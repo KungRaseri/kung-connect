@@ -37,6 +37,38 @@
             setTimeout(function () { document.body.removeChild(a); }, 200);
         };
 
+        // Try to launch a kungconnect:// URI.
+        // Returns a Promise<bool> — true if the OS handled it (browser lost focus),
+        // false if the client is probably not installed.
+        // Skips the detection when localStorage flag says client is known-installed.
+        window.kcTryLaunch = function (uri) {
+            return new Promise(function (resolve) {
+                if (localStorage.getItem('kc_client_installed') === '1') {
+                    window.kcLaunchUri(uri);
+                    resolve(true);
+                    return;
+                }
+                var opened = false;
+                var onBlur = function () { opened = true; };
+                window.addEventListener('blur', onBlur, { once: true });
+                document.addEventListener('visibilitychange', function onVis() {
+                    if (document.hidden) { opened = true; document.removeEventListener('visibilitychange', onVis); }
+                }, { once: true });
+                window.kcLaunchUri(uri);
+                setTimeout(function () {
+                    window.removeEventListener('blur', onBlur);
+                    if (opened) { localStorage.setItem('kc_client_installed', '1'); }
+                    resolve(opened);
+                }, 2500);
+            });
+        };
+
+        // Called after user confirms they installed the client — mark as installed and launch.
+        window.kcMarkInstalledAndLaunch = function (uri) {
+            localStorage.setItem('kc_client_installed', '1');
+            window.kcLaunchUri(uri);
+        };
+
         // Returns 'windows', 'macos', or 'linux' based on the browser UA
         window.kcDetectOs = function () {
             var ua = navigator.userAgent;

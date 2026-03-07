@@ -68,20 +68,21 @@
                         </p>
                     }
                     <p class="machine-seen">Last seen @m.LastSeenRelative</p>
-                    <button class="btn-primary" style="width:100%;margin-top:1rem"
-                            disabled="@(!m.Online)"
-                            @onclick:stopPropagation
-                            @onclick="() => ConnectToMachine(m)">
-                        @(m.Online ? "Connect" : m.Uninstalled ? "Not Installed" : "Offline")
-                    </button>
+                    @if (m.Online)
+                    {
+                        var launchUri = $"kungconnect://session?server={Uri.EscapeDataString(Nav.BaseUri.TrimEnd('/'))}" +
+                                        $"&machine={m.Id}&token={Uri.EscapeDataString(Auth.AccessToken ?? "")}";
+                        <ConnectButton LaunchUri="@launchUri" />
+                    }
+                    else
+                    {
+                        <button class="btn-primary" style="width:100%;margin-top:1rem" disabled>
+                            @(m.Uninstalled ? "Not Installed" : "Offline")
+                        </button>
+                    }
                 </div>
             }
         </div>
-    }
-
-    @if (_connectError is not null)
-    {
-        <p class="error" style="margin-top:1rem">@_connectError</p>
     }
 
     @* ── Download Agent ── always visible so you can add more machines ──── *@
@@ -180,7 +181,6 @@
 @code {
     private List<MachineViewModel> _machines = [];
     private bool _loading = true;
-    private string? _connectError;
     private string _serverOrigin => new Uri(Nav.BaseUri).GetLeftPart(UriPartial.Authority);
 
     // ── Add Machine modal ────────────────────────────────────────────────────
@@ -238,25 +238,6 @@
         }
         catch { /* handled by empty state */ }
         finally { _loading = false; }
-    }
-
-    private async Task ConnectToMachine(MachineViewModel m)
-    {
-        _connectError = null;
-        // Launch the desktop client via custom URI scheme.
-        // The desktop app registers itself as the handler for kungconnect://
-        var uri = $"kungconnect://session?server={Uri.EscapeDataString(Nav.BaseUri.TrimEnd('/'))}" +
-                  $"&machine={m.Id}&token={Uri.EscapeDataString(Auth.AccessToken ?? "")}";
-        try
-        {
-            // window.location.assign is more reliable than window.open for custom
-            // protocol URIs — browsers dispatch it to the OS without navigating away.
-            await JS.InvokeVoidAsync("window.location.assign", uri);
-        }
-        catch
-        {
-            _connectError = "Could not launch KungConnect desktop client. Is it installed?";
-        }
     }
 
     // ── View models ─────────────────────────────────────────────────────────
