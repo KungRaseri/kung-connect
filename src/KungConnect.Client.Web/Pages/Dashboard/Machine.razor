@@ -88,6 +88,14 @@
                         </svg>
                         @(_checkingUpdates ? "Checking…" : "Check for Updates")
                     </button>
+                    @if (!string.IsNullOrEmpty(_machine.UpdateAvailable))
+                    {
+                        <button class="btn-primary" style="font-size:.8rem"
+                                @onclick="InstallUpdateAsync" disabled="@_installingUpdate"
+                                title="Download and silently install v@_machine.UpdateAvailable on this machine (no UI — agent restarts automatically)">
+                            @(_installingUpdate ? "Installing…" : $"⬆ Update to v{_machine.UpdateAvailable}")
+                        </button>
+                    }
                 }
                 @if (!_machine.IsClaimed)
                 {
@@ -349,6 +357,7 @@
     private string _aliasEdit = "";
     private bool _checkingUpdates;
     private string? _checkUpdateMessage;
+    private bool _installingUpdate;
 
     private string LastSeenRelative
     {
@@ -492,6 +501,31 @@
         finally
         {
             _checkingUpdates = false;
+        }
+    }
+
+    private async Task InstallUpdateAsync()
+    {
+        if (_machine is null) return;
+        _installingUpdate   = true;
+        _checkUpdateMessage = null;
+        try
+        {
+            var resp = await Http.PostAsync($"/api/machines/{Id}/install-update", null);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadFromJsonAsync<ApiError>();
+                _checkUpdateMessage = $"⚠️ {err?.Error ?? $"Server returned {(int)resp.StatusCode}."}";                return;
+            }
+            _checkUpdateMessage = "✔ Update pushed — agent will download and restart shortly.";
+        }
+        catch (Exception ex)
+        {
+            _checkUpdateMessage = $"⚠️ {ex.Message}";
+        }
+        finally
+        {
+            _installingUpdate = false;
         }
     }
 

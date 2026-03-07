@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using KungConnect.Server.Configuration;
 using KungConnect.Server.Data;
 using KungConnect.Server.Data.Entities;
 using KungConnect.Server.Hubs;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace KungConnect.Server.Controllers;
 
@@ -248,6 +250,40 @@ public class MachinesController(
             .SendAsync(SignalingEvents.CheckForUpdates);
 
         logger.LogInformation("Update check triggered for machine {Id} ({Alias})", id, machine.Alias);
+        return Accepted();
+    }
+
+    /// <summary>
+    /// Pushes a silent unattended update to the connected agent.
+    /// The server resolves the download URL from DownloadsOptions based on the machine's OS.
+    /// Returns 202 Accepted, 409 if machine is offline.
+    /// </summary>
+    [HttpPost("{id:guid}/install-update")]
+    public async Task<IActionResult> PushInstallUpdate(
+        Guid id,
+        [FromServices] IOptions<DownloadsOptions> downloadsOpts)
+    {
+        var machine = await db.Machines.FindAsync(id);
+        if (machine is null) return NotFound();
+        if (!CanAccess(machine)) return Forbid();
+
+        var connId = await machineRegistry.GetConnectionIdAsync(id);
+        if (connId is null)
+            return Conflict(new { error = "Machine is offline — update cannot be pushed remotely." });
+
+        var downloadUrl = machine.OsType switch
+        {
+            OsType.Windows => downloadsOpts.Value.AgentWindowsUrl,
+            OsType.MacOs   => downloadsOpts.Value.AgentMacOsUrl,
+            OsType.Linux   => downloadsOpts.Value.AgentLinuxUrl,
+            _              => downloadsOpts.Value.AgentWindowsUrl
+        };
+
+        await hubContext.Clients.Client(connId)
+            .SendAsync(SignalingEvents.InstallUpdate, downloadUrl);
+
+        logger.LogInformation("Install update pushed to machine {Id} ({Alias}), url={Url}",
+            id, machine.Alias, downloadUrl);
         return Accepted();
     }
 

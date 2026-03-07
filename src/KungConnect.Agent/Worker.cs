@@ -16,6 +16,7 @@ public class Worker(
     ISignalingClientService signalingClient,
     SessionHandlerService sessionHandler,
     UpdateCheckerService updateChecker,
+    AgentInstallerService agentInstaller,
     IOptions<AgentOptions> agentOptions,
     AgentConnectionStatus agentStatus,
     ILogger<Worker> logger) : BackgroundService
@@ -154,6 +155,12 @@ public class Worker(
         {
             logger.LogInformation("Dashboard requested immediate update check");
             updateChecker.TriggerNow();
+        });
+
+        conn.On<string>(SignalingEvents.InstallUpdate, downloadUrl =>
+        {
+            logger.LogInformation("Dashboard requested unattended install from {Url}", downloadUrl);
+            _ = agentInstaller.InstallAsync(downloadUrl, stoppingToken);
         });
     }
 

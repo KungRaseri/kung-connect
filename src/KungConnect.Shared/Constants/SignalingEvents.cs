@@ -43,6 +43,9 @@ public static class SignalingEvents
     /// <summary>Agent → Server: result of an update check.
     /// Args: machineSecret (string), status ("up-to-date" | "github-not-configured").</summary>
     public const string AgentUpdateCheckStatus = "AgentUpdateCheckStatus";
+    /// <summary>Server → Agent: perform a silent unattended install of the latest release.
+    /// Args: downloadUrl (string) — direct URL to the installer artifact.</summary>
+    public const string InstallUpdate = "InstallUpdate";
 
     // ── Join-code flow (both directions) ────────────────────────────────────
     /// <summary>Server → Admin: customer has connected with the code. Payload: targetConnectionId.</summary>

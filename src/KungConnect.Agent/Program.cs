@@ -90,6 +90,7 @@ internal static class Program
         builder.Services.AddSingleton<ISignalingClientService, SignalingClientService>();
         builder.Services.AddSingleton<SessionHandlerService>();
         builder.Services.AddSingleton<UpdateCheckerService>();
+        builder.Services.AddSingleton<AgentInstallerService>();
         builder.Services.AddHostedService<Worker>();
         builder.Services.AddHostedService(sp => sp.GetRequiredService<UpdateCheckerService>());
 
