@@ -38,6 +38,9 @@ chmod +x "$INSTALL_DIR/KungConnect.Agent"
 cp "$SCRIPT_DIR/com.kungconnect.agent.plist" "$LAUNCHDAEMON_DIR/"
 chmod 644 "$LAUNCHDAEMON_DIR/com.kungconnect.agent.plist"
 
+# ── Make installer scripts executable ─────────────────────────────────────
+chmod +x "$SCRIPT_DIR/scripts/preinstall" "$SCRIPT_DIR/scripts/postinstall"
+
 # ── Build component package ────────────────────────────────────────────────
 pkgbuild \
     --root          "$STAGE" \

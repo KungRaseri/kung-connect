@@ -51,6 +51,10 @@ for f in postinst prerm postrm config templates; do
 done
 chmod 755 "$DEBIAN_DIR/postinst" "$DEBIAN_DIR/prerm" "$DEBIAN_DIR/postrm" "$DEBIAN_DIR/config"
 
+# Declare appsettings.json as a conffile so dpkg preserves it on upgrade
+# instead of silently overwriting it (which would wipe the MachineSecret).
+cp "$SCRIPT_DIR/debian/conffiles" "$DEBIAN_DIR/conffiles"
+
 # ── Build ──────────────────────────────────────────────────────────────────
 dpkg-deb --build --root-owner-group "$STAGE" "$OUTPUT"
 

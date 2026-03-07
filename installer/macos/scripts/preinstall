@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# KungConnect Agent — macOS preinstall script.
+# Runs as root before any files are placed on disk.
+set -euo pipefail
+
+INSTALL_DIR="/usr/local/lib/kungconnect-agent"
+PLIST_PATH="/Library/LaunchDaemons/com.kungconnect.agent.plist"
+CONFIG_BACKUP="/tmp/kungconnect-agent-appsettings.json.bak"
+
+# ── Stop the running daemon so its binary is not locked during file install ──
+if [ -f "$PLIST_PATH" ]; then
+    launchctl unload "$PLIST_PATH" 2>/dev/null || true
+fi
+
+# ── Back up the existing appsettings.json so postinstall can restore it ──────
+# The pkg installer places a fresh default config before postinstall runs,
+# which would wipe MachineSecret and force re-registration as a new machine.
+if [ -f "$INSTALL_DIR/appsettings.json" ]; then
+    cp "$INSTALL_DIR/appsettings.json" "$CONFIG_BACKUP"
+fi
+
+exit 0

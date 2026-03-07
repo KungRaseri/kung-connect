@@ -41,12 +41,22 @@
     <SummaryInformation Description="KungConnect remote-management agent" />
 
     <!--
-      MajorUpgrade: on upgrade, old product is removed AFTER new files are installed
-      (Schedule=afterInstallExecute) so the existing appsettings.json is preserved
-      until the new CustomAction can write to it.
+      MajorUpgrade: detects any previously installed version via UpgradeCode and
+      removes it BEFORE installing new files (Schedule defaults to
+      afterInstallInitialize).  This is essential for services: the old service
+      is stopped and deleted before new files land, avoiding the "two versions
+      in ARP" problem that occurs when the new product tries to register a
+      service that is already running.
+
+      appsettings.json survives the old product's removal because its component
+      carries Permanent="yes", and the new install doesn't overwrite it because
+      of NeverOverwrite="yes".
+
+      AllowSameVersionUpgrades="yes" lets a rebuild of the same version tag
+      (common in CI) still replace the existing installation.
     -->
     <MajorUpgrade DowngradeErrorMessage="A newer version of KungConnect Agent is already installed."
-                  Schedule="afterInstallExecute" />
+                  AllowSameVersionUpgrades="yes" />
 
     <MediaTemplate EmbedCab="yes" />
 

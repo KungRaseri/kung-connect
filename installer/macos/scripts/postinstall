@@ -5,18 +5,32 @@ set -euo pipefail
 
 INSTALL_DIR="/usr/local/lib/kungconnect-agent"
 PLIST_PATH="/Library/LaunchDaemons/com.kungconnect.agent.plist"
+CONFIG_BACKUP="/tmp/kungconnect-agent-appsettings.json.bak"
 
-# ── Ask for server URL ─────────────────────────────────────────────────────
-# Try a native macOS GUI dialog first; fall back to env var for headless installs.
+# ── Restore backed-up config if an upgrade just overwrote it ─────────────────
+# preinstall saves the existing appsettings.json (with MachineSecret) before
+# the pkg installer replaces it with the default template.  Restore it first
+# so the agent reconnects as the same machine rather than re-registering.
+if [ -f "$CONFIG_BACKUP" ]; then
+    cp "$CONFIG_BACKUP" "$INSTALL_DIR/appsettings.json"
+    rm -f "$CONFIG_BACKUP"
+fi
+
+# ── Ask for server URL only on a fresh install (not on upgrade) ───────────────
+# A fresh install has an unconfigured appsettings.json (ServerUrl is the
+# default placeholder).  On upgrade the restored config already has the URL.
+_current_url=$(python3 -c \
+    "import json,sys; d=json.load(open('$INSTALL_DIR/appsettings.json')); print(d.get('Agent',{}).get('ServerUrl',''))" \
+    2>/dev/null || echo "")
 
 SERVER_URL=""
 
-if [ -z "$SERVER_URL" ]; then
+if [ -z "$_current_url" ] || [ "$_current_url" = "https://localhost:5001" ]; then
+    # Fresh install — try env var first, then interactive dialog.
     SERVER_URL="${KUNGCONNECT_SERVER_URL:-}"
-fi
 
-if [ -z "$SERVER_URL" ] || [ "$SERVER_URL" = "https://" ]; then
-    SERVER_URL=$(osascript 2>/dev/null <<'APPLESCRIPT' || echo ""
+    if [ -z "$SERVER_URL" ] || [ "$SERVER_URL" = "https://" ]; then
+        SERVER_URL=$(osascript 2>/dev/null <<'APPLESCRIPT' || echo ""
 tell application "System Events"
     set result to text returned of (display dialog \
         "Enter your KungConnect server URL:" & return & return & \
@@ -29,13 +43,14 @@ tell application "System Events"
     return result
 end tell
 APPLESCRIPT
-    )
+        )
+    fi
 fi
 
 # ── Write configuration ────────────────────────────────────────────────────
 if [ -n "$SERVER_URL" ] && [ "$SERVER_URL" != "https://" ]; then
     "$INSTALL_DIR/KungConnect.Agent" --configure --server-url "$SERVER_URL"
-else
+elif [ -z "$_current_url" ] || [ "$_current_url" = "https://localhost:5001" ]; then
     echo "KungConnect Agent: server URL not configured."
     echo "  Configure later by running:"
     echo "    sudo $INSTALL_DIR/KungConnect.Agent --configure --server-url <url>"
@@ -46,3 +61,4 @@ launchctl unload "$PLIST_PATH" 2>/dev/null || true
 launchctl load   "$PLIST_PATH"
 
 echo "KungConnect Agent installed and running."
+
