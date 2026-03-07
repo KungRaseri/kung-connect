@@ -78,7 +78,7 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/packages.lock.json'
+          cache-dependency-path: '**/*.csproj'
 
       - name: Publish — ${{ matrix.label }}
         run: |
@@ -169,7 +169,7 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/packages.lock.json'
+          cache-dependency-path: '**/*.csproj'
 
       - name: Publish — ${{ matrix.label }}
         run: |

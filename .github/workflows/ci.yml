@@ -19,10 +19,10 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/packages.lock.json'
+          cache-dependency-path: '**/*.csproj'
 
       - name: Restore
-        run: dotnet restore KungConnect.sln --locked-mode || dotnet restore KungConnect.sln
+        run: dotnet restore KungConnect.sln
 
       - name: Build
         run: dotnet build KungConnect.sln --no-restore -c Release
@@ -31,6 +31,7 @@ jobs:
         run: |
           dotnet test KungConnect.sln --no-build -c Release \
             --logger "console;verbosity=normal" \
+            --logger "trx;LogFileName=results.trx" \
             --results-directory test-results
 
       - name: Upload test results
@@ -55,7 +56,7 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          cache-dependency-path: '**/packages.lock.json'
+          cache-dependency-path: '**/*.csproj'
 
       - name: Compute version
         id: ver
