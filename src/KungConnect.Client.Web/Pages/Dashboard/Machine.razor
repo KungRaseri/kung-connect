@@ -22,58 +22,18 @@
     else
     {
         <!-- ── Header ────────────────────────────────────────────────────── -->
-        <div class="dash-page-header" style="flex-wrap:wrap;gap:.75rem;align-items:flex-start">
-            <div>
+        <div class="dash-page-header" style="flex-direction:column;align-items:stretch;gap:.5rem">
+            <!-- Row 1: back link (left) + action buttons (right) -->
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
                 <a class="btn-ghost" href="/dashboard"
-                   style="font-size:.85rem;padding:.3rem .65rem;display:inline-flex;align-items:center;gap:.3rem;margin-bottom:.6rem">
+                   style="font-size:.85rem;padding:.3rem .65rem;display:inline-flex;align-items:center;gap:.3rem">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                          style="width:.8rem;height:.8rem">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
                     </svg>
                     Machines
                 </a>
-                <div style="display:flex;align-items:center;gap:.65rem;flex-wrap:wrap">
-                    @if (_editingAlias)
-                    {
-                        <input class="field-input" @bind="_aliasEdit"
-                               style="font-size:1.15rem;font-weight:700;width:260px;padding:.4rem .75rem"/>
-                        <button class="btn-primary" style="padding:.4rem .9rem"
-                                @onclick="SaveAliasAsync" disabled="@_savingAlias">
-                            @(_savingAlias ? "Saving…" : "Save")
-                        </button>
-                        <button class="btn-ghost" style="padding:.4rem .7rem"
-                                @onclick="() => _editingAlias = false">Cancel</button>
-                    }
-                    else
-                    {
-                        <h2 style="margin:0;font-size:1.35rem">@_machine.Alias</h2>
-                        <button class="btn-ghost" style="padding:.25rem .45rem" title="Rename machine"
-                                @onclick="StartEditAlias">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                 style="width:.85rem;height:.85rem">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                            </svg>
-                        </button>
-                        <span class="machine-status-badge @(_machine.Status == "Online" ? "online" : _machine.Status == "Uninstalled" ? "uninstalled" : "offline")">
-                            @(_machine.Status == "Uninstalled" ? "Not Installed" : _machine.Status)
-                        </span>
-                        @if (!string.IsNullOrEmpty(_machine.UpdateAvailable))
-                        {
-                            <span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:600;
-                                         background:#422006;border:1px solid #92400e;color:#fbbf24;
-                                         border-radius:9999px;padding:.2rem .65rem">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                                     style="width:.75rem;height:.75rem;flex-shrink:0">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7 7 7M12 3v13M5 21h14"/>
-                                </svg>
-                                v@_machine.UpdateAvailable available
-                            </span>
-                        }
-                    }
-                </div>
-            </div>
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                <div style="display:flex;gap:.5rem;flex-wrap:wrap">
                 @if (_machine.Status == "Online")
                 {
                     var launchUri = $"kungconnect://session?server={Uri.EscapeDataString(Nav.BaseUri.TrimEnd('/'))}" +
@@ -107,6 +67,48 @@
                         @onclick="() => _confirmDelete = true">
                     Delete
                 </button>
+                </div>
+            </div>
+            <!-- Row 2: machine name + badges -->
+            <div style="display:flex;align-items:center;gap:.65rem;flex-wrap:wrap">
+                @if (_editingAlias)
+                {
+                    <input class="field-input" @bind="_aliasEdit"
+                           style="font-size:1.15rem;font-weight:700;width:260px;padding:.4rem .75rem"/>
+                    <button class="btn-primary" style="padding:.4rem .9rem"
+                            @onclick="SaveAliasAsync" disabled="@_savingAlias">
+                        @(_savingAlias ? "Saving…" : "Save")
+                    </button>
+                    <button class="btn-ghost" style="padding:.4rem .7rem"
+                            @onclick="() => _editingAlias = false">Cancel</button>
+                }
+                else
+                {
+                    <h2 style="margin:0;font-size:1.35rem">@_machine.Alias</h2>
+                    <button class="btn-ghost" style="padding:.25rem .45rem" title="Rename machine"
+                            @onclick="StartEditAlias">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             style="width:.85rem;height:.85rem">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </button>
+                    <span class="machine-status-badge @(_machine.Status == "Online" ? "online" : _machine.Status == "Uninstalled" ? "uninstalled" : "offline")">
+                        @(_machine.Status == "Uninstalled" ? "Not Installed" : _machine.Status)
+                    </span>
+                    @if (!string.IsNullOrEmpty(_machine.UpdateAvailable))
+                    {
+                        <span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:600;
+                                     background:#422006;border:1px solid #92400e;color:#fbbf24;
+                                     border-radius:9999px;padding:.2rem .65rem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                 style="width:.75rem;height:.75rem;flex-shrink:0">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7 7 7M12 3v13M5 21h14"/>
+                            </svg>
+                            v@_machine.UpdateAvailable available
+                        </span>
+                    }
+                }
             </div>
         </div>
 
