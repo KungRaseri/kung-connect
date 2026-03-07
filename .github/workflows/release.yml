@@ -284,9 +284,10 @@ jobs:
   # ── Create GitHub Release with all artifacts ────────────────────────────────
   release:
     name: Create GitHub Release
-    needs: [build-client, build-agent, docker, version]
-    # build-agent now fans out to 5 matrix entries across ubuntu + macos runners;
+    needs: [build-client, build-agent, version]
+    # build-agent fans out to 5 matrix entries across ubuntu + macos runners;
     # all must succeed before a release is cut.
+    # docker runs independently — image availability is not a blocker for the release.
     runs-on: ubuntu-latest
 
     steps:
