@@ -57,6 +57,16 @@
                         <span class="machine-os">@m.OsType</span>
                     </div>
                     <p class="machine-host">@m.Hostname</p>
+                    @if (m.HasUpdate)
+                    {
+                        <p style="margin:.35rem 0 0;font-size:.75rem;color:#facc15;display:flex;align-items:center;gap:.3rem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                 style="width:.85rem;height:.85rem;flex-shrink:0">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7 7 7M12 3v13M5 21h14"/>
+                            </svg>
+                            v@m.UpdateAvailable available
+                        </p>
+                    }
                     <p class="machine-seen">Last seen @m.LastSeenRelative</p>
                     <button class="btn-primary" style="width:100%;margin-top:1rem"
                             disabled="@(!m.Online)"
@@ -254,7 +264,7 @@
     private sealed record MachineDto(
         Guid Id, string Alias, string Hostname,
         string OsType, string Status, string AgentVersion,
-        DateTimeOffset LastSeen);
+        DateTimeOffset LastSeen, string? UpdateAvailable = null);
 
     private sealed class MachineViewModel(MachineDto d)
     {
@@ -264,6 +274,8 @@
         public string OsType   => d.OsType;
         public bool   Online       => d.Status == "Online";
         public bool   Uninstalled  => d.Status == "Uninstalled";
+        public bool   HasUpdate    => !string.IsNullOrEmpty(d.UpdateAvailable);
+        public string? UpdateAvailable => d.UpdateAvailable;
         public string LastSeenRelative
         {
             get

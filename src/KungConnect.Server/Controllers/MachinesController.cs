@@ -28,7 +28,7 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
             .ToListAsync();
 
         return Ok(machines.Select(m => new MachineDto(
-            m.Id, m.Alias, m.Hostname, m.OsType, m.Status, m.AgentVersion, m.LastSeen)));
+            m.Id, m.Alias, m.Hostname, m.OsType, m.Status, m.AgentVersion, m.LastSeen, m.UpdateAvailable)));
     }
 
     [HttpGet("{id:guid}")]
@@ -40,7 +40,7 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
 
         return Ok(new MachineDto(
             machine.Id, machine.Alias, machine.Hostname, machine.OsType,
-            machine.Status, machine.AgentVersion, machine.LastSeen));
+            machine.Status, machine.AgentVersion, machine.LastSeen, machine.UpdateAvailable));
     }
 
     /// <summary>Returns full machine details including the agent secret and ready-to-paste config snippet.</summary>
@@ -66,7 +66,7 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
             machine.OsType, machine.Status, machine.AgentVersion,
             machine.LastSeen, machine.RegisteredAt,
             machine.MachineSecret, machine.AutoAcceptSessions,
-            machine.OwnerId is not null, snippet));
+            machine.OwnerId is not null, snippet, machine.UpdateAvailable));
     }
 
     /// <summary>Rename a machine.</summary>
@@ -83,7 +83,7 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
         machine.Alias = request.Alias.Trim();
         await db.SaveChangesAsync();
         return Ok(new MachineDto(machine.Id, machine.Alias, machine.Hostname,
-            machine.OsType, machine.Status, machine.AgentVersion, machine.LastSeen));
+            machine.OsType, machine.Status, machine.AgentVersion, machine.LastSeen, machine.UpdateAvailable));
     }
 
     /// <summary>
@@ -180,7 +180,7 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
         await db.SaveChangesAsync();
 
         return Ok(new MachineDto(machine.Id, machine.Alias, machine.Hostname,
-            machine.OsType, machine.Status, machine.AgentVersion, machine.LastSeen));
+            machine.OsType, machine.Status, machine.AgentVersion, machine.LastSeen, machine.UpdateAvailable));
     }
 
     /// <summary>

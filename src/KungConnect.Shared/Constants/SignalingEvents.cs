@@ -31,6 +31,14 @@ public static class SignalingEvents
     public const string MachineStatusChanged = "MachineStatusChanged";
     public const string Error                = "Error";
 
+    // ── Update notifications ─────────────────────────────────────────────────
+    /// <summary>Agent → Server (invoke): agent has detected a newer GitHub release.
+    /// Args: machineSecret, latestVersion, downloadUrl.</summary>
+    public const string AgentUpdateAvailable   = "AgentUpdateAvailable";
+    /// <summary>Server → Dashboard clients (receive): a machine has a pending update.
+    /// Args: machineId (Guid), latestVersion (string), downloadUrl (string).</summary>
+    public const string MachineUpdateAvailable = "MachineUpdateAvailable";
+
     // ── Join-code flow (both directions) ────────────────────────────────────
     /// <summary>Server → Admin: customer has connected with the code. Payload: targetConnectionId.</summary>
     public const string JoinCodeCustomerReady = "JoinCodeCustomerReady";

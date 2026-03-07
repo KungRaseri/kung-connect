@@ -87,6 +87,21 @@ public class SignalingHub(
                 if (!string.IsNullOrEmpty(osType) &&
                     Enum.TryParse<OsType>(osType, ignoreCase: true, out var parsedOs))
                     dbMachine.OsType = parsedOs;
+
+                // Clear the "update available" flag when the reconnecting agent has
+                // already installed the update (current version ≥ pending version).
+                if (dbMachine.UpdateAvailable is not null
+                    && !string.IsNullOrEmpty(agentVersion)
+                    && Version.TryParse(agentVersion, out var av)
+                    && Version.TryParse(dbMachine.UpdateAvailable, out var uv)
+                    && av >= uv)
+                {
+                    logger.LogInformation(
+                        "Machine {Id}: update installed (was waiting for v{Pending}, now v{Current})",
+                        machine.Id, dbMachine.UpdateAvailable, agentVersion);
+                    dbMachine.UpdateAvailable = null;
+                }
+
                 await db.SaveChangesAsync();
             }
         }
@@ -103,6 +118,36 @@ public class SignalingHub(
         if (machine is null) return;
         machine.LastSeen = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Called by the agent's <c>UpdateCheckerService</c> when it detects a newer release
+    /// on GitHub.  Persists the version string against the machine record and pushes a
+    /// <c>MachineUpdateAvailable</c> event to all dashboard clients so the badge appears
+    /// immediately without requiring a page refresh.
+    /// </summary>
+    [AllowAnonymous]
+    public async Task AgentUpdateAvailable(string machineSecret, string latestVersion, string downloadUrl)
+    {
+        var machine = await machineRegistry.AuthenticateAsync(machineSecret);
+        if (machine is null) return;
+
+        var dbMachine = await db.Machines.FindAsync(machine.Id);
+        if (dbMachine is null) return;
+
+        // Only write + broadcast when the stored value actually changes.
+        if (dbMachine.UpdateAvailable == latestVersion) return;
+
+        dbMachine.UpdateAvailable = latestVersion;
+        await db.SaveChangesAsync();
+
+        logger.LogInformation(
+            "Machine {Id} ({Alias}): update available → v{Version}",
+            machine.Id, machine.Alias, latestVersion);
+
+        // Notify all connected dashboard clients so the badge shows up live.
+        await Clients.All.SendAsync(
+            SignalingEvents.MachineUpdateAvailable, machine.Id, latestVersion, downloadUrl);
     }
 
     // ── Session approval flow ────────────────────────────────────────────────

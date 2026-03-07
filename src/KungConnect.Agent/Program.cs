@@ -90,6 +90,7 @@ internal static class Program
         builder.Services.AddSingleton<ISignalingClientService, SignalingClientService>();
         builder.Services.AddSingleton<SessionHandlerService>();
         builder.Services.AddHostedService<Worker>();
+        builder.Services.AddHostedService<UpdateCheckerService>();
 
         // Keep the host alive even if a connection error leaks out of the
         // Worker retry loop — the service will reconnect on the next attempt.

@@ -31,7 +31,9 @@ public record MachineDto(
     OsType OsType,
     MachineStatus Status,
     string AgentVersion,
-    DateTimeOffset LastSeen)
+    DateTimeOffset LastSeen,
+    /// <summary>Non-null when the agent has reported a newer GitHub release. Null = up-to-date.</summary>
+    string? UpdateAvailable = null)
 {
     public static MachineDto FromInfo(MachineInfo m) =>
         new(m.Id, m.Alias, m.Hostname, m.OsType, m.Status, m.AgentVersion, m.LastSeen);
@@ -50,7 +52,8 @@ public record MachineDetailDto(
     string MachineSecret,
     bool AutoAcceptSessions,
     bool IsClaimed,
-    string ConfigSnippet);
+    string ConfigSnippet,
+    string? UpdateAvailable = null);
 
 /// <summary>Payload for PATCH /api/machines/{id} — rename a machine.</summary>
 public record UpdateMachineRequest(string Alias);

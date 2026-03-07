@@ -17,6 +17,13 @@ public class MachineEntity
     /// <summary>SignalR connection ID of the currently-connected agent.</summary>
     public string? SignalRConnectionId { get; set; }
     public bool AutoAcceptSessions { get; set; } = false;
+    /// <summary>
+    /// Set when the agent polls GitHub and finds a newer release than its current version.
+    /// Stores the latest available version string (e.g. "1.4.2").
+    /// Cleared automatically in AgentRegister when the agent re-connects with the new version.
+    /// Null means the agent is up-to-date (or update checking is not configured).
+    /// </summary>
+    public string? UpdateAvailable { get; set; }
     public DateTimeOffset RegisteredAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset LastSeen { get; set; } = DateTimeOffset.UtcNow;
 
