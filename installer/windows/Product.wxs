@@ -3,7 +3,21 @@
   KungConnect Agent — Windows Installer (WiX v4)
 
   Build (CI):
-    wix build Product.wxs ServerUrlDlg.wxs \
+    # 1. Publish the agent
+    dotnet publish src/KungConnect.Agent/KungConnect.Agent.csproj \
+      -c Release -f net9.0-windows -r win-x64 --self-contained true \
+      -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true \
+      -o dist/agent-win-x64
+
+    # 2. Harvest publish output → AgentFiles.wxs  (auto-generates one Component
+    #    per file; KungConnect.Agent.exe gets ServiceInstall + ServiceControl)
+    powershell -ExecutionPolicy Bypass \
+      -File installer/windows/harvest-agent.ps1 \
+      -SourceDir dist/agent-win-x64 \
+      -OutputFile installer/windows/AgentFiles.wxs
+
+    # 3. Compile
+    wix build Product.wxs ServerUrlDlg.wxs AgentFiles.wxs \
       -d Version=<ver> -d AgentBinDir=dist/agent-win-x64 \
       -arch x64 \
       -ext WixToolset.UI.wixext \
@@ -51,7 +65,6 @@
 
     <Feature Id="ProductFeature" Title="KungConnect Agent" Level="1">
       <ComponentGroupRef Id="AgentFiles" />
-      <ComponentGroupRef Id="AgentService" />
     </Feature>
 
     <!--
@@ -87,57 +100,13 @@
 
   </Package>
 
-  <!-- ── File components ──────────────────────────────────────────────────── -->
-  <Fragment>
-    <ComponentGroup Id="AgentFiles" Directory="INSTALLFOLDER">
-
-      <Component Id="AgentExeComp" Guid="B5C6D7E8-F9A0-4B1C-8D2E-3F4A5B6C7D8E">
-        <File Id="AgentExe"
-              Source="$(AgentBinDir)\KungConnect.Agent.exe"
-              KeyPath="yes" />
-      </Component>
-
-      <!--
-        NeverOverwrite on Component (not File) — WiX v4 moved this attribute.
-        Preserves MachineSecret / ServerUrl on upgrade; CA_ConfigureAgent rewrites URL.
-      -->
-      <Component Id="AppSettingsComp" Guid="C6D7E8F9-A0B1-4C2D-9E3F-4A5B6C7D8E9F"
-                 NeverOverwrite="yes">
-        <File Id="AppSettingsJson"
-              Source="$(AgentBinDir)\appsettings.json"
-              Vital="no" />
-      </Component>
-
-    </ComponentGroup>
-  </Fragment>
-
-  <!-- ── Windows Service registration ─────────────────────────────────────── -->
-  <Fragment>
-    <ComponentGroup Id="AgentService" Directory="INSTALLFOLDER">
-      <Component Id="AgentServiceComp" Guid="D7E8F9A0-B1C2-4D3E-AF4A-5B6C7D8E9F0A">
-        <CreateFolder />
-        <ServiceInstall Id="AgentServiceInstall"
-                        Name="KungConnectAgent"
-                        DisplayName="KungConnect Agent"
-                        Description="KungConnect remote-management agent"
-                        Type="ownProcess"
-                        Start="auto"
-                        ErrorControl="normal"
-                        Account="LocalSystem" />
-        <!--
-          No Start on install: the service auto-starts on next boot via ServiceInstall Start="auto".
-          Trying to start immediately during installation is unreliable — the server
-          may not be reachable yet and would cause a 30-second SCM timeout + Error 1920.
-          Stop="both"      — stop on upgrade and uninstall.
-          Remove="uninstall" — remove from SCM on uninstall.
-        -->
-        <ServiceControl Id="AgentServiceControl"
-                        Name="KungConnectAgent"
-                        Stop="both"
-                        Remove="uninstall"
-                        Wait="no" />
-      </Component>
-    </ComponentGroup>
-  </Fragment>
+  <!--
+    AgentFiles ComponentGroup is generated at build time by:
+      installer/windows/harvest-agent.ps1 -SourceDir <AgentBinDir> -OutputFile installer/windows/AgentFiles.wxs
+    The script scans the dotnet publish output and produces one Component per
+    file.  AgentExeComp (KungConnect.Agent.exe) carries KeyPath="yes",
+    ServiceInstall, and ServiceControl.
+    AgentFiles.wxs is passed to `wix build` alongside this file.
+  -->
 
 </Wix>

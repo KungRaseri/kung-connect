@@ -23,7 +23,8 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
     {
         var machines = await db.Machines
             .Where(m => User.IsInRole(Roles.Admin)
-                     || m.OwnerId == CurrentUserId)
+                     || m.OwnerId == CurrentUserId
+                     || m.OwnerId == null)   // unclaimed self-registered agents visible to all
             .ToListAsync();
 
         return Ok(machines.Select(m => new MachineDto(
@@ -183,5 +184,5 @@ public class MachinesController(AppDbContext db, ILogger<MachinesController> log
     }
 
     private bool CanAccess(MachineEntity machine) =>
-        User.IsInRole(Roles.Admin) || machine.OwnerId == CurrentUserId;
+        User.IsInRole(Roles.Admin) || machine.OwnerId == CurrentUserId || machine.OwnerId == null;
 }

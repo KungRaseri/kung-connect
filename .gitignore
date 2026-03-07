@@ -28,4 +28,7 @@ deploy/.env
 # ── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# ── WiX generated files (built by harvest-agent.ps1 before wix build) ────────
+installer/windows/AgentFiles.wxs
 Desktop.ini

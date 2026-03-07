@@ -188,12 +188,24 @@ jobs:
           wix extension add --global WixToolset.UI.wixext/4.0.5
           wix extension add --global WixToolset.Util.wixext/4.0.5
 
+      - name: Harvest agent files
+        if: matrix.installer == 'msi'
+        shell: pwsh
+        run: |
+          # Generates installer/windows/AgentFiles.wxs from the publish output.
+          # With PublishSingleFile=true this is a single-component file; without
+          # it the script handles multi-file publish layouts automatically.
+          powershell -ExecutionPolicy Bypass -File installer/windows/harvest-agent.ps1 `
+            -SourceDir dist/agent-win-x64 `
+            -OutputFile installer/windows/AgentFiles.wxs
+
       - name: Build MSI
         if: matrix.installer == 'msi'
         run: |
           wix build \
             installer/windows/Product.wxs \
             installer/windows/ServerUrlDlg.wxs \
+            installer/windows/AgentFiles.wxs \
             -d Version=${{ needs.version.outputs.semver }} \
             -d AgentBinDir=dist/agent-win-x64 \
             -arch x64 \
