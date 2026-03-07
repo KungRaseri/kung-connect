@@ -1,0 +1,72 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    // ── Agent (Windows tray, Debug) ────────────────────────────────────────────
+    // Builds net9.0-windows, then launches the exe with DOTNET_ENVIRONMENT=Development
+    // so appsettings.Development.json is loaded (points at Docker server on port 5000).
+    // Stops the installed Windows service first via preLaunchTask.
+    {
+      "name": "Debug Agent (Docker server)",
+      "type": "coreclr",
+      "request": "launch",
+      // preLaunchTask:
+      //   1. Reads MachineSecret from the installed service and writes it into
+      //      src/KungConnect.Agent/appsettings.json so .NET config picks it up.
+      //   2. Stops the KungConnectAgent Windows service.
+      //   3. Builds net9.0-windows.
+      // postDebugTask: restores the service when you stop the debugger.
+      "preLaunchTask": "build: Agent (Windows) + stop service",
+      "postDebugTask": "dev: restore agent service",
+      "program": "${workspaceFolder}/src/KungConnect.Agent/bin/Debug/net9.0-windows/KungConnect.Agent.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/KungConnect.Agent",
+      "stopAtEntry": false,
+      "env": {
+        // DOTNET_ENVIRONMENT=Development loads appsettings.Development.json which
+        // overrides ServerUrl (→ Docker) and MachineAlias (→ "Dev-Agent").
+        // MachineSecret is NOT in appsettings.Development.json so it falls through
+        // to appsettings.json, where the preLaunchTask already wrote the service secret.
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "console": "internalConsole",
+      "justMyCode": false
+    },
+
+    // ── Desktop Client (Avalonia, Debug) ───────────────────────────────────────
+    // KUNGCONNECT_SERVER_URL bypasses the first-run server setup dialog.
+    // Remove it to test first-run flow, or change the URL to target a different server.
+    {
+      "name": "Debug Client (Docker server)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: Client",
+      "program": "${workspaceFolder}/src/KungConnect.Client/bin/Debug/net9.0/KungConnect.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/KungConnect.Client",
+      "stopAtEntry": false,
+      "env": {
+        "KUNGCONNECT_SERVER_URL": "http://localhost:5000"
+      },
+      "console": "internalConsole",
+      "justMyCode": false
+    },
+
+    // ── Client — URI launch simulation ────────────────────────────────────────
+    // Simulates what happens when the browser fires kungconnect://session?...
+    // Replace the token value with one from /api/auth/token after logging in.
+    {
+      "name": "Debug Client (URI launch)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build: Client",
+      "program": "${workspaceFolder}/src/KungConnect.Client/bin/Debug/net9.0/KungConnect.exe",
+      "args": [
+        "kungconnect://session?server=http%3A%2F%2Flocalhost%3A5000&machine=00000000-0000-0000-0000-000000000000&token=REPLACE_ME"
+      ],
+      "cwd": "${workspaceFolder}/src/KungConnect.Client",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "justMyCode": false
+    }
+  ]
+}

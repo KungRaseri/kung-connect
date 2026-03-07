@@ -48,10 +48,13 @@
     },
 
     // ── Run: Agent ─────────────────────────────────────────────────────────────
+    // NOTE: --framework net9.0-windows is required — the project targets both
+    // net9.0-windows (WinForms tray) and net9.0 (Linux/macOS headless). Without
+    // it dotnet run is ambiguous and fails on Windows.
     {
       "label": "run: Agent",
       "type": "shell",
-      "command": "dotnet run --project src/KungConnect.Agent/KungConnect.Agent.csproj",
+      "command": "dotnet run --project src/KungConnect.Agent/KungConnect.Agent.csproj --framework net9.0-windows",
       "group": "test",
       "isBackground": true,
       "presentation": {
@@ -145,6 +148,99 @@
         "reveal": "always",
         "panel": "shared"
       },
+      "problemMatcher": []
+    },
+
+    // ── Build helpers (used by launch.json pre-launch tasks) ──────────────────
+    {
+      "label": "build: Agent (Windows)",
+      "type": "shell",
+      "command": "dotnet build src/KungConnect.Agent/KungConnect.Agent.csproj --framework net9.0-windows",
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build: Agent (Windows) + stop service",
+      "type": "shell",
+      // 1. Read MachineSecret from the installed Windows service.
+      // 2. Write it into the SOURCE appsettings.json so .NET config layering picks
+      //    it up when the debugger launches with DOTNET_ENVIRONMENT=Development.
+      //    (appsettings.Development.json overrides ServerUrl/Alias but has no
+      //    MachineSecret, so the value from appsettings.json is used automatically.)
+      // 3. Stop the installed service to avoid duplicate registrations.
+      // 4. Build the Windows TFM.
+      "command": "$svcCfg = 'C:\\Program Files\\KungConnect Agent\\appsettings.json'; $srcCfg = Resolve-Path 'src/KungConnect.Agent/appsettings.json'; $secret = $null; if (Test-Path $svcCfg) { try { $secret = (Get-Content $svcCfg -Raw | ConvertFrom-Json).Agent.MachineSecret } catch {} }; if ($secret) { $json = Get-Content $srcCfg -Raw | ConvertFrom-Json -AsHashtable; if (-not $json.Agent) { $json.Agent = @{} }; $json.Agent.MachineSecret = $secret; $json | ConvertTo-Json -Depth 10 | Set-Content $srcCfg; git update-index --skip-worktree src/KungConnect.Agent/appsettings.json 2>$null; Write-Host \"Synced MachineSecret from installed service (file marked skip-worktree)\" } else { Write-Host \"No installed service found \u2014 dev agent will use its own identity\" }; Stop-Service KungConnectAgent -Force -ErrorAction SilentlyContinue; dotnet build src/KungConnect.Agent/KungConnect.Agent.csproj --framework net9.0-windows",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "build: Client",
+      "type": "shell",
+      "command": "dotnet build src/KungConnect.Client/KungConnect.Client.csproj",
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": "$msCompile"
+    },
+
+    // ── Dev: run against Docker server (service management) ──────────────────
+    // Use these when the released agent/client is already installed locally.
+    // "run: Agent (Dev — Docker server)" stops the Windows service first so
+    // the dev build can connect without a port/registration conflict.
+    // Run "dev: restore agent service" when you're done to bring it back.
+    {
+      "label": "dev: stop agent service",
+      "type": "shell",
+      "command": "Stop-Service KungConnectAgent -Force -ErrorAction SilentlyContinue ; Write-Host 'KungConnectAgent stopped'",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: restore agent service",
+      "type": "shell",
+      // Also used as postDebugTask in launch.json to bring the service back
+      // automatically when the F5 debug session stops.
+      "command": "Start-Service KungConnectAgent -ErrorAction SilentlyContinue ; Write-Host 'KungConnectAgent started'",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "run: Agent (Dev — Docker server)",
+      "type": "shell",
+      // Reads the MachineSecret from the installed Windows service so the dev build
+      // appears as the same machine in the dashboard. Stops the service to avoid
+      // duplicate registrations. All happens in one PS session so env vars flow
+      // through to dotnet run.
+      "command": "$cfg = 'C:\\Program Files\\KungConnect Agent\\appsettings.json'; $secret = if (Test-Path $cfg) { try { (Get-Content $cfg -Raw | ConvertFrom-Json).Agent.MachineSecret } catch { $null } } else { $null }; Stop-Service KungConnectAgent -Force -ErrorAction SilentlyContinue; if ($secret) { $env:Agent__MachineSecret = $secret; Write-Host \"Using machine secret from installed service\" } else { Write-Host \"No installed service found — dev agent will use its own identity\" }; $env:DOTNET_ENVIRONMENT = 'Development'; dotnet run --project src/KungConnect.Agent/KungConnect.Agent.csproj --framework net9.0-windows",
+      "group": "test",
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "run" },
+      "problemMatcher": {
+        "owner": "dotnet",
+        "pattern": { "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$", "file": 1, "line": 2, "column": 3, "severity": 4, "message": 5 },
+        "background": { "activeOnStart": true, "beginsPattern": "Building\\...", "endsPattern": "KungConnect Agent starting" }
+      }
+    },
+    {
+      "label": "run: Client (Dev — Docker server)",
+      "type": "shell",
+      // KUNGCONNECT_SERVER_URL bypasses the first-run server setup dialog.
+      // It also gets saved to %APPDATA%\KungConnect\settings.json so subsequent
+      // runs skip the dialog automatically.
+      "command": "dotnet run --project src/KungConnect.Client/KungConnect.Client.csproj",
+      "options": { "env": { "KUNGCONNECT_SERVER_URL": "http://localhost:5000" } },
+      "group": "test",
+      "isBackground": false,
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "run" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run: Dev Stack (Docker server)",
+      "dependsOn": ["run: Agent (Dev — Docker server)", "run: Client (Dev — Docker server)"],
+      "dependsOrder": "parallel",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared" },
       "problemMatcher": []
     },
 
