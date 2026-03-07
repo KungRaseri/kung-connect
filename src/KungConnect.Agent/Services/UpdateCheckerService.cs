@@ -124,9 +124,12 @@ public sealed class UpdateCheckerService(
             if (release is null || string.IsNullOrWhiteSpace(release.TagName))
                 return;
 
-            // Strip leading 'v' so "v1.2.3" → "1.2.3" parses correctly.
-            var tagWithoutV = release.TagName.TrimStart('v');
-            if (!Version.TryParse(tagWithoutV, out var latestVersion))
+            // Strip leading 'v' and any pre-release suffix (e.g. "v0.0.58-abc1234" → "0.0.58").
+            // .NET's Version class does not support SemVer pre-release labels; everything
+            // after the first '-' must be removed before calling Version.TryParse.
+            var tagWithoutV      = release.TagName.TrimStart('v');
+            var tagVersionPart   = tagWithoutV.Split('-')[0];
+            if (!Version.TryParse(tagVersionPart, out var latestVersion))
             {
                 logger.LogWarning("UpdateChecker: could not parse version from tag '{Tag}'", release.TagName);
                 return;
