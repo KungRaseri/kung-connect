@@ -4,7 +4,7 @@
              x:Class="KungConnect.Client.Views.SessionView"
              x:DataType="vm:SessionViewModel">
 
-  <DockPanel Background="Black">
+  <DockPanel Background="Black" Focusable="True">
 
     <!-- Top bar -->
     <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto"

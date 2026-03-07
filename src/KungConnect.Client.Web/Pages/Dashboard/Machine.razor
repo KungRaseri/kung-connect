@@ -295,7 +295,9 @@
                   $"&machine={Id}&token={Uri.EscapeDataString(Auth.AccessToken ?? "")}";
         try
         {
-            await JS.InvokeVoidAsync("window.open", uri, "_self");
+            // Use location.assign — more reliable than window.open for custom URI schemes
+            // (window.open with _self is often silently blocked by popup guards).
+            await JS.InvokeVoidAsync("window.location.assign", uri);
         }
         catch
         {

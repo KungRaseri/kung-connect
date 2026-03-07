@@ -86,10 +86,11 @@ public class WindowsInputInjector(ILogger<WindowsInputInjector> logger) : IInput
 
     public void Scroll(int deltaX, int deltaY)
     {
+        // deltaY is already in Win32 WHEEL_DELTA units (120 per notch) — do not scale further.
         var input = new INPUT
         {
             Type = INPUT_MOUSE,
-            Data = new InputUnion { mi = new MOUSEINPUT { mouseData = deltaY * 120, dwFlags = (int)MOUSEEVENTF_WHEEL } }
+            Data = new InputUnion { mi = new MOUSEINPUT { mouseData = deltaY, dwFlags = (int)MOUSEEVENTF_WHEEL } }
         };
         SendInput(1, [input], Marshal.SizeOf<INPUT>());
     }

@@ -160,6 +160,9 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
             var bmp = new Bitmap(ms);
             Dispatcher.UIThread.Post(() =>
             {
+                // Keep remote dimensions in sync so mouse coordinates are correct
+                RemoteWidth  = bmp.PixelSize.Width;
+                RemoteHeight = bmp.PixelSize.Height;
                 var old = RemoteFrame;
                 RemoteFrame = bmp;
                 old?.Dispose();
