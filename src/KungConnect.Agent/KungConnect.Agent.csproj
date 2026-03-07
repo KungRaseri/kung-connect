@@ -5,6 +5,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>dotnet-KungConnect.Agent-19bad793-c5ea-4b27-bd03-352669f23b87</UserSecretsId>
+    <!-- Dev builds report 0.0.1 so any GitHub release (0.0.2+) triggers the update workflow.
+         CI injects the real semver via -p:Version= and this value is ignored for release builds. -->
+    <Version>0.0.1</Version>
   </PropertyGroup>
 
   <!-- Windows: run windowless with WinForms system tray -->

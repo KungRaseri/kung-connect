@@ -517,7 +517,52 @@
                 var err = await resp.Content.ReadFromJsonAsync<ApiError>();
                 _checkUpdateMessage = $"⚠️ {err?.Error ?? $"Server returned {(int)resp.StatusCode}."}";                return;
             }
-            _checkUpdateMessage = "✔ Update pushed — agent will download and restart shortly.";
+
+            _checkUpdateMessage = "⬇ Downloading & installing — agent will restart shortly…";
+            StateHasChanged();
+
+            // Poll up to 90 s: wait for agent to go offline (restarting), then come
+            // back online with the UpdateAvailable badge cleared (new version confirmed).
+            var deadline   = DateTime.UtcNow.AddSeconds(90);
+            var wentOffline = false;
+            while (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(3_000);
+                await LoadAsync();
+                StateHasChanged();
+
+                var isOnline = _machine?.Status == "Online";
+
+                if (!isOnline)
+                {
+                    // Agent went offline — restarting after install.
+                    _checkUpdateMessage = "♻ Agent is restarting…";
+                    wentOffline = true;
+                }
+                else if (wentOffline && isOnline)
+                {
+                    // Agent came back. Check whether the update cleared.
+                    if (string.IsNullOrEmpty(_machine?.UpdateAvailable))
+                    {
+                        _checkUpdateMessage = "✔ Update installed — agent is running the new version.";
+                        return;
+                    }
+                    // Came back online but badge still set — may need another cycle.
+                    _checkUpdateMessage = "⬇ Downloading & installing — agent will restart shortly…";
+                    wentOffline = false;
+                }
+                else if (isOnline && string.IsNullOrEmpty(_machine?.UpdateAvailable))
+                {
+                    // Badge cleared without an observed offline period (fast install / already done).
+                    _checkUpdateMessage = "✔ Update installed — agent is running the new version.";
+                    return;
+                }
+            }
+
+            // Timed out — could be a slow download or install failure.
+            _checkUpdateMessage = wentOffline
+                ? "⚠️ Agent hasn't come back online yet — check the machine."
+                : "⚠️ Timed out waiting for install confirmation. Check the agent logs.";
         }
         catch (Exception ex)
         {

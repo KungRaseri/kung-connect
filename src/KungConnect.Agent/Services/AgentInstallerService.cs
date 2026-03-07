@@ -53,11 +53,42 @@ public sealed class AgentInstallerService(
             logger.LogInformation("AgentInstaller: download complete ({Bytes} bytes)",
                 new FileInfo(tempFile).Length);
 
-            // ── 2. Run installer silently ────────────────────────────────
+            // ── 2. Launch installer ──────────────────────────────────────
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // Windows MSI: the installer itself stops and restarts the Windows Service.
+                // We must NOT wait for it — msiexec issues `sc stop KungConnectAgent` mid-install,
+                // which would kill the very process that is waiting on WaitForExitAsync, creating
+                // a deadlock / missed-exit situation.
+                // Strategy: launch msiexec detached (UseShellExecute=true), then stop the host
+                // immediately so SCM sees a clean exit. After the MSI finishes it starts the
+                // upgraded service automatically via its own ServiceInstall table entry.
+                var logFile = $"{tempFile}.log";
+                var psi = new ProcessStartInfo(
+                    "msiexec.exe",
+                    $"/i \"{tempFile}\" /quiet /norestart /l*v \"{logFile}\"")
+                {
+                    UseShellExecute = true,
+                };
+
+                using var proc = Process.Start(psi)
+                    ?? throw new InvalidOperationException("Failed to start msiexec.");
+
+                logger.LogInformation(
+                    "AgentInstaller: msiexec launched (pid {Pid}). Stopping service — SCM will restart with new binary.",
+                    proc.Id);
+
+                lifetime.StopApplication();
+                return;
+            }
+
+            // ── Non-Windows: wait for installer, then stop ───────────────
+            // dpkg / installer do NOT stop-and-restart the service themselves on Linux/macOS,
+            // so we wait for the package tool to finish before handing control back to the SCM.
             var (exe, args) = BuildInstallerCommand(tempFile);
             logger.LogInformation("AgentInstaller: running {Exe} {Args}", exe, args);
 
-            var psi = new ProcessStartInfo(exe, args)
+            var nonWinPsi = new ProcessStartInfo(exe, args)
             {
                 UseShellExecute        = false,
                 RedirectStandardOutput = true,
@@ -65,28 +96,22 @@ public sealed class AgentInstallerService(
                 CreateNoWindow         = true,
             };
 
-            // On Linux/macOS the installer may need elevated privileges.
-            // When running as a systemd service the process typically runs as root already.
-            // On Windows the SCM typically runs services as LocalSystem — msiexec can install.
-            using var proc = Process.Start(psi)
+            using var nonWinProc = Process.Start(nonWinPsi)
                 ?? throw new InvalidOperationException("Failed to start installer process.");
 
-            var stdout = await proc.StandardOutput.ReadToEndAsync(ct);
-            var stderr = await proc.StandardError.ReadToEndAsync(ct);
+            var stdout = await nonWinProc.StandardOutput.ReadToEndAsync(ct);
+            var stderr = await nonWinProc.StandardError.ReadToEndAsync(ct);
+            await nonWinProc.WaitForExitAsync(ct);
 
-            await proc.WaitForExitAsync(ct);
-
-            if (proc.ExitCode != 0)
+            if (nonWinProc.ExitCode != 0)
             {
                 logger.LogError(
                     "AgentInstaller: installer exited with code {Code}.\nstdout: {Out}\nstderr: {Err}",
-                    proc.ExitCode, stdout, stderr);
+                    nonWinProc.ExitCode, stdout, stderr);
                 return;
             }
 
             logger.LogInformation("AgentInstaller: installer succeeded. Stopping service for restart.");
-
-            // ── 3. Stop the host — service manager will restart with new binary ──
             lifetime.StopApplication();
         }
         catch (OperationCanceledException)
@@ -108,13 +133,7 @@ public sealed class AgentInstallerService(
 
     private static (string exe, string args) BuildInstallerCommand(string installerPath)
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // /quiet     — no UI
-            // /norestart — don't auto-reboot the machine; we'll handle the restart ourselves
-            return ("msiexec.exe", $"/i \"{installerPath}\" /quiet /norestart /l*v \"{installerPath}.log\"");
-        }
-
+        // Windows is handled separately in InstallAsync (detached msiexec, no wait).
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
             // --force-confnew overwrites existing config files with package defaults
