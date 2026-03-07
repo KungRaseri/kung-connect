@@ -17,10 +17,12 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore
-        run: dotnet restore KungConnect.sln
+        run: dotnet restore KungConnect.sln --locked-mode || dotnet restore KungConnect.sln
 
       - name: Build
         run: dotnet build KungConnect.sln --no-restore -c Release
@@ -51,7 +53,9 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Compute version
         id: ver
