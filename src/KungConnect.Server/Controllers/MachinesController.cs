@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using KungConnect.Server.Data;
 using KungConnect.Server.Data.Entities;
 using KungConnect.Server.Hubs;
@@ -6,6 +7,7 @@ using KungConnect.Server.Services;
 using KungConnect.Shared.Constants;
 using KungConnect.Shared.DTOs.Machines;
 using KungConnect.Shared.Enums;
+using KungConnect.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -69,13 +71,21 @@ public class MachinesController(
                       "  }\n" +
                       "}";
 
+        AgentSystemInfo? systemInfo = null;
+        if (!string.IsNullOrEmpty(machine.SystemInfoJson))
+        {
+            try { systemInfo = JsonSerializer.Deserialize<AgentSystemInfo>(machine.SystemInfoJson,
+                      new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
+            catch { /* ignore malformed JSON */ }
+        }
+
         return Ok(new MachineDetailDto(
             machine.Id, machine.Alias, machine.Hostname,
             machine.OsType, machine.Status, machine.AgentVersion,
             machine.LastSeen, machine.RegisteredAt,
             machine.MachineSecret, machine.AutoAcceptSessions,
             machine.OwnerId is not null, snippet, machine.UpdateAvailable,
-            updateCheckStatusCache.Get(id)));
+            updateCheckStatusCache.Get(id), systemInfo));
     }
 
     /// <summary>Rename a machine.</summary>

@@ -44,9 +44,10 @@ public class SignalingHub(
     [AllowAnonymous]
     public async Task AgentRegister(
         string machineSecret,
-        string? hostname     = null,
-        string? osType       = null,
-        string? agentVersion = null)
+        string? hostname       = null,
+        string? osType         = null,
+        string? agentVersion   = null,
+        string? systemInfoJson = null)
     {
         if (string.IsNullOrWhiteSpace(machineSecret))
         {
@@ -68,6 +69,7 @@ public class SignalingHub(
                 MachineSecret      = machineSecret,
                 AutoAcceptSessions = true,
                 AgentVersion       = agentVersion ?? string.Empty,
+                SystemInfoJson     = systemInfoJson
             };
             if (!string.IsNullOrEmpty(osType) &&
                 Enum.TryParse<OsType>(osType, ignoreCase: true, out var parsedOs))
@@ -83,8 +85,9 @@ public class SignalingHub(
             var dbMachine = await db.Machines.FindAsync(machine.Id);
             if (dbMachine is not null)
             {
-                if (!string.IsNullOrEmpty(hostname))     dbMachine.Hostname     = hostname;
-                if (!string.IsNullOrEmpty(agentVersion)) dbMachine.AgentVersion = agentVersion;
+                if (!string.IsNullOrEmpty(hostname))       dbMachine.Hostname       = hostname;
+                if (!string.IsNullOrEmpty(agentVersion))   dbMachine.AgentVersion   = agentVersion;
+                if (!string.IsNullOrEmpty(systemInfoJson)) dbMachine.SystemInfoJson = systemInfoJson;
                 if (!string.IsNullOrEmpty(osType) &&
                     Enum.TryParse<OsType>(osType, ignoreCase: true, out var parsedOs))
                     dbMachine.OsType = parsedOs;

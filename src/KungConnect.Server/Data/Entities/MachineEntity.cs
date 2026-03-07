@@ -24,6 +24,8 @@ public class MachineEntity
     /// Null means the agent is up-to-date (or update checking is not configured).
     /// </summary>
     public string? UpdateAvailable { get; set; }
+    /// <summary>JSON-serialised AgentSystemInfo snapshot sent by the agent on every connect.</summary>
+    public string? SystemInfoJson { get; set; }
     public DateTimeOffset RegisteredAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset LastSeen { get; set; } = DateTimeOffset.UtcNow;
 

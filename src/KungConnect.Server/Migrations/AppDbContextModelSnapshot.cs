@@ -102,6 +102,9 @@ namespace KungConnect.Server.Migrations
                     b.Property<string>("UpdateAvailable")
                         .HasColumnType("text");
 
+                    b.Property<string>("SystemInfoJson")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MachineSecret")

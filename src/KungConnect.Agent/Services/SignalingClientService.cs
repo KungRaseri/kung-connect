@@ -1,9 +1,10 @@
+using System.Runtime.InteropServices;
+using System.Text.Json;
 using KungConnect.Agent.Configuration;
 using KungConnect.Shared.Constants;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Runtime.InteropServices;
 
 namespace KungConnect.Agent.Services;
 
@@ -77,10 +78,14 @@ public class SignalingClientService(
         var version = typeof(SignalingClientService).Assembly
             .GetName().Version?.ToString(3) ?? "0.0.0";
 
+        var systemInfo     = await SystemInfoCollector.CollectAsync();
+        var systemInfoJson = JsonSerializer.Serialize(systemInfo);
+
         await _connection.InvokeAsync(
-            SignalingEvents.AgentRegister, _opts.MachineSecret, hostname, osType, version, ct);
+            SignalingEvents.AgentRegister, _opts.MachineSecret, hostname, osType, version, systemInfoJson, ct);
         logger.LogInformation(
-            "Agent registered: host={Host}, os={Os}, version={Ver}", hostname, osType, version);
+            "Agent registered: host={Host}, os={Os}, version={Ver}, ip={Ip}",
+            hostname, osType, version, systemInfo.PrimaryIpAddress);
     }
 
     public async Task StopAsync(CancellationToken ct = default)

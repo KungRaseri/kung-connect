@@ -54,7 +54,8 @@ public record MachineDetailDto(
     bool IsClaimed,
     string ConfigSnippet,
     string? UpdateAvailable = null,
-    string? UpdateCheckStatus = null);
+    string? UpdateCheckStatus = null,
+    AgentSystemInfo? SystemInfo = null);
 
 /// <summary>Payload for PATCH /api/machines/{id} — rename a machine.</summary>
 public record UpdateMachineRequest(string Alias);

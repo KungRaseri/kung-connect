@@ -135,6 +135,23 @@
                 <p class="detail-label">OS</p>
                 <p class="detail-value">@_machine.OsType</p>
             </div>
+            @if (_machine.SystemInfo is { } si0 && !string.IsNullOrEmpty(si0.PrimaryIpAddress))
+            {
+                <div class="detail-card">
+                    <p class="detail-label">IP Address</p>
+                    @foreach (var ip in si0.AllIpAddresses)
+                    {
+                        <p class="detail-value" style="margin:.1rem 0">@ip</p>
+                    }
+                </div>
+            }
+            @if (_machine.SystemInfo is { PrimaryMacAddress: { Length: > 0 } mac })
+            {
+                <div class="detail-card">
+                    <p class="detail-label">MAC Address</p>
+                    <p class="detail-value" style="font-family:monospace;font-size:.8rem">@mac</p>
+                </div>
+            }
             <div class="detail-card">
                 <p class="detail-label">Agent Version</p>
                 <p class="detail-value">@(string.IsNullOrEmpty(_machine.AgentVersion) ? "Not reported" : _machine.AgentVersion)</p>
@@ -161,6 +178,107 @@
                 <p class="detail-value">@(_machine.AutoAcceptSessions ? "Enabled" : "Disabled")</p>
             </div>
         </div>
+
+        @if (_machine.SystemInfo is { } si)
+        {
+            <!-- ── Hardware ───────────────────────────────────────────────── -->
+            <div class="detail-section">
+                <h3 class="detail-section-title">Hardware</h3>
+                <div class="detail-grid">
+                    @if (!string.IsNullOrEmpty(si.CpuName))
+                    {
+                        <div class="detail-card" style="grid-column:span 2">
+                            <p class="detail-label">Processor</p>
+                            <p class="detail-value">@si.CpuName</p>
+                        </div>
+                    }
+                    <div class="detail-card">
+                        <p class="detail-label">Logical Cores</p>
+                        <p class="detail-value">@si.CpuCores</p>
+                    </div>
+                    @if (si.TotalRamBytes > 0)
+                    {
+                        <div class="detail-card">
+                            <p class="detail-label">Total RAM</p>
+                            <p class="detail-value">@FormatBytes(si.TotalRamBytes)</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- ── Operating System ───────────────────────────────────────── -->
+            <div class="detail-section">
+                <h3 class="detail-section-title">Operating System</h3>
+                <div class="detail-grid">
+                    @if (!string.IsNullOrEmpty(si.OsDescription))
+                    {
+                        <div class="detail-card" style="grid-column:span 2">
+                            <p class="detail-label">Description</p>
+                            <p class="detail-value">@si.OsDescription</p>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(si.OsArchitecture))
+                    {
+                        <div class="detail-card">
+                            <p class="detail-label">Architecture</p>
+                            <p class="detail-value">@si.OsArchitecture</p>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(si.RuntimeVersion))
+                    {
+                        <div class="detail-card">
+                            <p class="detail-label">.NET Runtime</p>
+                            <p class="detail-value">@si.RuntimeVersion</p>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(si.Timezone))
+                    {
+                        <div class="detail-card">
+                            <p class="detail-label">Timezone</p>
+                            <p class="detail-value">@si.Timezone</p>
+                        </div>
+                    }
+                    @if (si.UptimeSeconds > 0)
+                    {
+                        <div class="detail-card">
+                            <p class="detail-label">Uptime (at last contact)</p>
+                            <p class="detail-value">@FormatUptime(si.UptimeSeconds)</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- ── Storage ────────────────────────────────────────────────── -->
+            @if (si.Disks.Count > 0)
+            {
+                <div class="detail-section">
+                    <h3 class="detail-section-title">Storage</h3>
+                    <div style="display:flex;flex-direction:column;gap:.75rem">
+                        @foreach (var disk in si.Disks)
+                        {
+                            var usedBytes = disk.TotalBytes - disk.FreeBytes;
+                            var pct       = disk.TotalBytes > 0 ? (int)(usedBytes * 100 / disk.TotalBytes) : 0;
+                            var barColor  = pct >= 90 ? "#ef4444" : pct >= 75 ? "#f59e0b" : "#34d399";
+                            <div style="background:#1e293b;border:1px solid #334155;border-radius:.75rem;padding:1rem">
+                                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.5rem;gap:.5rem;flex-wrap:wrap">
+                                    <span style="font-size:.875rem;color:#f1f5f9;font-weight:500">
+                                        @disk.Name
+                                        <span style="font-size:.75rem;color:#64748b;font-weight:400">(@disk.DriveType)</span>
+                                    </span>
+                                    <span style="font-size:.75rem;color:#94a3b8;white-space:nowrap">
+                                        @FormatBytes(usedBytes) used / @FormatBytes(disk.TotalBytes) total
+                                        <span style="color:@(pct >= 90 ? "#ef4444" : "#64748b")">(@(100 - pct)% free)</span>
+                                    </span>
+                                </div>
+                                <div style="height:.35rem;background:#334155;border-radius:9999px;overflow:hidden">
+                                    <div style="height:100%;width:@(pct)%;background:@barColor;border-radius:9999px"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
 
         <!-- ── Agent configuration ─────────────────────────────────────── -->
         <div class="detail-section">
@@ -414,5 +532,25 @@
         bool IsClaimed,
         string ConfigSnippet,
         string? UpdateAvailable = null,
-        string? UpdateCheckStatus = null);
+        string? UpdateCheckStatus = null,
+        AgentSystemInfo? SystemInfo = null);
+
+    // ── Formatting helpers ───────────────────────────────────────────────────
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes <= 0) return "—";
+        if (bytes >= 1L << 40) return $"{bytes / (double)(1L << 40):F1} TB";
+        if (bytes >= 1L << 30) return $"{bytes / (double)(1L << 30):F1} GB";
+        if (bytes >= 1L << 20) return $"{bytes / (double)(1L << 20):F0} MB";
+        return $"{bytes >> 10} KB";
+    }
+
+    private static string FormatUptime(long seconds)
+    {
+        var ts = TimeSpan.FromSeconds(seconds);
+        if (ts.TotalDays  >= 1) return $"{(int)ts.TotalDays}d {ts.Hours}h {ts.Minutes}m";
+        if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}h {ts.Minutes}m";
+        return $"{(int)ts.TotalMinutes}m";
+    }
 }
