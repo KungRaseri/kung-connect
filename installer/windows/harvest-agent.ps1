@@ -64,7 +64,7 @@ function New-DeterministicGuid([string]$seed) {
 
 # ── collect files ─────────────────────────────────────────────────────────────
 
-$files = Get-ChildItem -LiteralPath $SourceDir -Recurse -File | Sort-Object FullName
+$files = @(Get-ChildItem -LiteralPath $SourceDir -Recurse -File | Sort-Object FullName)
 
 if ($files.Count -eq 0) {
     throw "No files found in '$SourceDir'"
@@ -83,11 +83,11 @@ $null = $sb.AppendLine('')
 $null = $sb.AppendLine('  <Fragment>')
 
 # Declare every subdirectory as a nested Directory element under INSTALLFOLDER
-$dirs = $files |
+$dirs = @($files |
     ForEach-Object { Split-Path $_.FullName -Parent } |
     Where-Object { $_ -ne $SourceDir } |
     Select-Object -Unique |
-    Sort-Object
+    Sort-Object)
 
 $dirMap = @{}   # abs path → WiX Directory Id
 
@@ -164,7 +164,7 @@ foreach ($file in $files) {
     $extraAttrs = if ($isConfig) { ' NeverOverwrite="yes" Permanent="yes"' } else { '' }
 
     $null = $sb.AppendLine('')
-    $null = $sb.AppendLine("      <Component Id=\"$compId\" Guid=\"$guid\"$dirRef$extraAttrs>")
+    $null = $sb.AppendLine("      <Component Id=""$compId"" Guid=""$guid""$dirRef$extraAttrs>")
 
     if ($isExe) {
         $null = $sb.AppendLine("        <File Id=""$fileId"" Source=""`$(AgentBinDir)\$relPath"" KeyPath=""yes"" />")
@@ -183,9 +183,10 @@ foreach ($file in $files) {
         $null = $sb.AppendLine("                        Account=""LocalSystem"" />")
         $null = $sb.AppendLine("        <ServiceControl Id=""AgentServiceControl""")
         $null = $sb.AppendLine("                        Name=""$ServiceName""")
+        $null = $sb.AppendLine("                        Start=""install""")
         $null = $sb.AppendLine("                        Stop=""both""")
         $null = $sb.AppendLine("                        Remove=""uninstall""")
-        $null = $sb.AppendLine("                        Wait=\"yes\" />")  # wait for service to reach Stopped before CA_NotifyUninstall fires
+        $null = $sb.AppendLine("                        Wait=""yes"" />") # wait for service to reach Stopped before CA_NotifyUninstall fires
     } elseif ($isConfig) {
         $null = $sb.AppendLine("        <File Id=""$fileId"" Source=""`$(AgentBinDir)\$relPath"" Vital=""no"" />")
     } else {

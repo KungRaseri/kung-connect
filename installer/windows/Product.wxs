@@ -5,8 +5,9 @@
   Build (CI):
     # 1. Publish the agent
     dotnet publish src/KungConnect.Agent/KungConnect.Agent.csproj \
-      -c Release -f net9.0-windows -r win-x64 --self-contained true \
-      -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true \
+      -c Release -f net9.0-windows -r win-x64 \
+      -p:SelfContained=true -p:PublishSingleFile=true \
+      -p:EnableCompressionInSingleFile=true \
       -o dist/agent-win-x64
 
     # 2. Harvest publish output → AgentFiles.wxs  (auto-generates one Component
@@ -88,7 +89,7 @@
     <!--
       CA_NotifyUninstall — runs during uninstall AFTER the service is deleted
       (so the exe is still on disk) but BEFORE files are removed.
-      Calls:  KungConnect.Agent.exe --notify-uninstall
+      Calls:  KungConnect.Agent.exe -notify-uninstall
       which POSTs to the server to mark the machine as Uninstalled.
       Return="ignore" so a network failure never blocks the uninstall.
       UPGRADINGPRODUCTCODE guard prevents this from firing during a product upgrade
