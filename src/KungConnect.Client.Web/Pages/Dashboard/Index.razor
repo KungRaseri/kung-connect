@@ -239,7 +239,9 @@
                   $"&machine={m.Id}&token={Uri.EscapeDataString(Auth.AccessToken ?? "")}";
         try
         {
-            await JS.InvokeVoidAsync("window.open", uri, "_self");
+            // window.location.assign is more reliable than window.open for custom
+            // protocol URIs — browsers dispatch it to the OS without navigating away.
+            await JS.InvokeVoidAsync("window.location.assign", uri);
         }
         catch
         {

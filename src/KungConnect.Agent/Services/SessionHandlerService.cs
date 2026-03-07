@@ -108,10 +108,11 @@ public class SessionHandlerService(
             logger.LogDebug("Unexpected incoming data channel: {Label}", receivedDc.label);
 
         // ── Register hub handlers scoped to this session ─────────────────────
-        // These fire when the operator sends back the answer and ICE candidates.
+        // Each conn.On() call returns an IDisposable — we MUST dispose these when
+        // the session ends, otherwise stale handlers accumulate across sessions.
         var conn = signalingClient.Connection;
 
-        conn.On<Guid, string>(SignalingEvents.ReceiveAnswer, (sid, sdp) =>
+        var answerSub = conn.On<Guid, string>(SignalingEvents.ReceiveAnswer, (sid, sdp) =>
         {
             if (sid != sessionId) return;
             logger.LogDebug("Session {Id}: received SDP answer", sessionId);
@@ -121,7 +122,7 @@ public class SessionHandlerService(
                 logger.LogWarning("Session {Id}: setRemoteDescription(answer) returned {Result}", sessionId, result);
         });
 
-        conn.On<Guid, string, string, int?>(SignalingEvents.ReceiveIceCandidate,
+        var iceSub = conn.On<Guid, string, string, int?>(SignalingEvents.ReceiveIceCandidate,
             (sid, candidate, sdpMid, sdpMLineIndex) =>
             {
                 if (sid != sessionId) return;
@@ -155,6 +156,10 @@ public class SessionHandlerService(
         // ── Wait for session end (cancellation from Worker) ───────────────────
         try { await Task.Delay(Timeout.Infinite, ct); }
         catch (OperationCanceledException) { }
+
+        // Tear down hub subscriptions before releasing anything else
+        answerSub.Dispose();
+        iceSub.Dispose();
 
         capturer.FrameCaptured -= OnFrameCaptured;
         pc.close();
