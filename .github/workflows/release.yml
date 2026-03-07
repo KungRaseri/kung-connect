@@ -93,21 +93,21 @@ jobs:
         if: matrix.pkg == 'zip'
         run: |
           zip -j \
-            "KungConnect-${{ matrix.rid }}.zip" \
+            "KungConnect-${{ matrix.rid }}-${{ needs.version.outputs.semver }}.zip" \
             "dist/${{ matrix.rid }}/${{ matrix.bin }}"
 
       - name: Package (tar.gz)
         if: matrix.pkg == 'tar'
         run: |
           tar -czf \
-            "KungConnect-${{ matrix.rid }}.tar.gz" \
+            "KungConnect-${{ matrix.rid }}-${{ needs.version.outputs.semver }}.tar.gz" \
             -C "dist/${{ matrix.rid }}" "${{ matrix.bin }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: client-${{ matrix.rid }}
-          path: "KungConnect-${{ matrix.rid }}.*"
+          path: "KungConnect-${{ matrix.rid }}-${{ needs.version.outputs.semver }}.*"
           if-no-files-found: error
 
   # ── Build the agent for every supported platform ──────────────────────────
@@ -206,7 +206,7 @@ jobs:
             -arch x64 \
             -ext WixToolset.UI.wixext \
             -ext WixToolset.Util.wixext \
-            -o KungConnect-Agent-win-x64.msi
+            -o KungConnect-Agent-win-x64-${{ needs.version.outputs.semver }}.msi
 
       # ── Linux: Debian .deb + tar.gz fallback ──────────────────────────────
       - name: Build .deb
@@ -216,10 +216,10 @@ jobs:
           installer/linux/build-deb.sh \
             dist/agent-${{ matrix.rid }} \
             ${{ needs.version.outputs.semver }} \
-            KungConnect-Agent-${{ matrix.rid }}.deb \
+            KungConnect-Agent-${{ matrix.rid }}-${{ needs.version.outputs.semver }}.deb \
             ${{ matrix.deb_arch }}
           # Also ship a tar.gz for users who prefer manual installs.
-          tar -czf KungConnect-Agent-${{ matrix.rid }}.tar.gz \
+          tar -czf KungConnect-Agent-${{ matrix.rid }}-${{ needs.version.outputs.semver }}.tar.gz \
             -C dist/agent-${{ matrix.rid }} KungConnect.Agent
 
       # ── macOS: .pkg installer ─────────────────────────────────────────────
@@ -230,14 +230,14 @@ jobs:
           installer/macos/build-pkg.sh \
             dist/agent-${{ matrix.rid }} \
             ${{ needs.version.outputs.semver }} \
-            KungConnect-Agent-${{ matrix.rid }}.pkg \
+            KungConnect-Agent-${{ matrix.rid }}-${{ needs.version.outputs.semver }}.pkg \
             ${{ matrix.rid }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: agent-${{ matrix.rid }}
-          path: "KungConnect-Agent-${{ matrix.rid }}.*"
+          path: "KungConnect-Agent-${{ matrix.rid }}-${{ needs.version.outputs.semver }}.*"
           if-no-files-found: error
 
   # ── Build & push the server Docker image to GHCR ───────────────────────────
@@ -341,16 +341,16 @@ jobs:
 
             ```env
             # Desktop client (customer/join-page downloads)
-            DOWNLOADS_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-win-x64.zip
-            DOWNLOADS_MACOS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-osx-arm64.zip
-            DOWNLOADS_LINUX_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-linux-x64.tar.gz
+            DOWNLOADS_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.name }}/KungConnect-win-x64-${{ needs.version.outputs.semver }}.zip
+            DOWNLOADS_MACOS_URL=https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.name }}/KungConnect-osx-arm64-${{ needs.version.outputs.semver }}.zip
+            DOWNLOADS_LINUX_URL=https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.name }}/KungConnect-linux-x64-${{ needs.version.outputs.semver }}.tar.gz
 
             # Agent (install on machines you want to manage)
-            DOWNLOADS_AGENT_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-win-x64.msi
-            DOWNLOADS_AGENT_MACOS_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-osx-arm64.pkg
-            DOWNLOADS_AGENT_LINUX_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-linux-x64.deb
-            DOWNLOADS_AGENT_LINUX_ARM64_URL=https://github.com/${{ github.repository }}/releases/latest/download/KungConnect-Agent-linux-arm64.deb
+            DOWNLOADS_AGENT_WINDOWS_URL=https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.name }}/KungConnect-Agent-win-x64-${{ needs.version.outputs.semver }}.msi
+            DOWNLOADS_AGENT_MACOS_URL=https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.name }}/KungConnect-Agent-osx-arm64-${{ needs.version.outputs.semver }}.pkg
+            DOWNLOADS_AGENT_LINUX_URL=https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.name }}/KungConnect-Agent-linux-x64-${{ needs.version.outputs.semver }}.deb
+            DOWNLOADS_AGENT_LINUX_ARM64_URL=https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.name }}/KungConnect-Agent-linux-arm64-${{ needs.version.outputs.semver }}.deb
             ```
 
-            > **Intel Mac users:** use `KungConnect-osx-x64.zip` (client) / `KungConnect-Agent-osx-x64.pkg` (agent) instead of the arm64 builds.
+            > **Intel Mac users:** use `KungConnect-osx-x64-${{ needs.version.outputs.semver }}.zip` (client) / `KungConnect-Agent-osx-x64-${{ needs.version.outputs.semver }}.pkg` (agent) instead of the arm64 builds.
             > **.deb users:** A `*.tar.gz` portable binary is also included in each release for distros without dpkg.
