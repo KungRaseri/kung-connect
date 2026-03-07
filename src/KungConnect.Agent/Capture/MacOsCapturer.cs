@@ -12,6 +12,7 @@ namespace KungConnect.Agent.Capture;
 public class MacOsCapturer(ILogger<MacOsCapturer> logger) : IScreenCapturer
 {
     public int MonitorCount { get; private set; } = 1;
+    public int TargetFps { get; set; } = 30;
     public event EventHandler<FrameCapturedEventArgs>? FrameCaptured;
 
     private CancellationTokenSource? _cts;

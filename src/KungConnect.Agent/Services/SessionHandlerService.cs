@@ -36,6 +36,7 @@ public class SessionHandlerService(
         logger.LogInformation("Starting session {Id} for operator {ConnId}", sessionId, operatorConnectionId);
 
         var capturer = ScreenCapturerFactory.Create(loggerFactory);
+        capturer.TargetFps = _opts.CaptureFrameRateTarget;
         var injector = InputInjectorFactory.Create(loggerFactory);
 
         var pc = new RTCPeerConnection(new RTCConfiguration

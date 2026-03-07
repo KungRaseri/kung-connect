@@ -60,6 +60,8 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
         _signaling.IceCandidateReceived  += OnIceCandidateReceived;
         _signaling.SessionStateChanged   += OnSessionStateChanged;
         _signaling.SessionApproved       += OnSessionApproved;
+        _signaling.SessionRejected       += OnSessionRejected;
+        _signaling.SessionEnded          += OnSessionEndedByServer;
     }
 
     // ── Session start ─────────────────────────────────────────────────────────
@@ -180,6 +182,26 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
         State = SessionState.Approved;
     }
 
+    private void OnSessionRejected(object? sender, Guid sessionId)
+    {
+        if (sessionId != _sessionId) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            ErrorMessage = "Session was rejected by the agent.";
+            SessionEnded?.Invoke(this, EventArgs.Empty);
+        });
+    }
+
+    private void OnSessionEndedByServer(object? sender, Guid sessionId)
+    {
+        if (sessionId != _sessionId) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            StatusMessage = "Session ended by remote.";
+            SessionEnded?.Invoke(this, EventArgs.Empty);
+        });
+    }
+
     private async void OnOfferReceived(object? sender, SdpMessage sdp)
     {
         // This fires for machine sessions: agent sent us their offer.
@@ -205,7 +227,20 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
         };
 
         _pc.onconnectionstatechange += s =>
+        {
             Dispatcher.UIThread.Post(() => StatusMessage = $"WebRTC: {s}");
+            switch (s)
+            {
+                case RTCPeerConnectionState.connected:
+                    Dispatcher.UIThread.Post(() => State = SessionState.Active);
+                    break;
+                case RTCPeerConnectionState.disconnected:
+                case RTCPeerConnectionState.failed:
+                case RTCPeerConnectionState.closed:
+                    Dispatcher.UIThread.Post(() => SessionEnded?.Invoke(this, EventArgs.Empty));
+                    break;
+            }
+        };
 
         try
         {
@@ -312,6 +347,8 @@ public sealed partial class SessionViewModel : ViewModelBase, IAsyncDisposable
         _signaling.IceCandidateReceived -= OnIceCandidateReceived;
         _signaling.SessionStateChanged  -= OnSessionStateChanged;
         _signaling.SessionApproved      -= OnSessionApproved;
+        _signaling.SessionRejected      -= OnSessionRejected;
+        _signaling.SessionEnded         -= OnSessionEndedByServer;
 
         await _cts.CancelAsync();
         _cts.Dispose();

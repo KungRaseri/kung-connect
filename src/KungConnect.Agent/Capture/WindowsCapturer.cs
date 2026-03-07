@@ -18,6 +18,7 @@ namespace KungConnect.Agent.Capture;
 public class WindowsCapturer(ILogger<WindowsCapturer> logger) : IScreenCapturer
 {
     public int MonitorCount { get; private set; } = 1;
+    public int TargetFps { get; set; } = 30;
     public event EventHandler<FrameCapturedEventArgs>? FrameCaptured;
 
     private CancellationTokenSource? _cts;
@@ -82,8 +83,7 @@ public class WindowsCapturer(ILogger<WindowsCapturer> logger) : IScreenCapturer
 
     private async Task CaptureLoopAsync(int monitorIndex, CancellationToken ct)
     {
-        const int TargetFps = 10;
-        const int IntervalMs = 1000 / TargetFps;
+        var intervalMs = 1000 / Math.Max(1, TargetFps);
 
         while (!ct.IsCancellationRequested)
         {
@@ -100,7 +100,7 @@ public class WindowsCapturer(ILogger<WindowsCapturer> logger) : IScreenCapturer
             }
 
             var elapsed = (int)sw.ElapsedMilliseconds;
-            var delay   = Math.Max(1, IntervalMs - elapsed);
+            var delay   = Math.Max(1, intervalMs - elapsed);
             try { await Task.Delay(delay, ct); } catch (OperationCanceledException) { break; }
         }
     }

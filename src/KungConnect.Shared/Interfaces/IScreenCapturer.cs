@@ -11,6 +11,9 @@ public interface IScreenCapturer : IDisposable
     /// <summary>Number of available monitors (populated after Start).</summary>
     int MonitorCount { get; }
 
+    /// <summary>Target capture frame rate. Set before calling <see cref="StartAsync"/>.</summary>
+    int TargetFps { get; set; }
+
     /// <summary>Fires whenever a new raw frame is available.</summary>
     event EventHandler<FrameCapturedEventArgs>? FrameCaptured;
 

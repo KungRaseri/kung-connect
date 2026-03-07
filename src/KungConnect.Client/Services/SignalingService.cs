@@ -17,6 +17,7 @@ public sealed class SignalingService : ISignalingService
     public event EventHandler<SessionStateMessage>? SessionStateChanged;
     public event EventHandler<Guid>? SessionApproved;
     public event EventHandler<Guid>? SessionRejected;
+    public event EventHandler<Guid>? SessionEnded;
 
     public SignalingService(IHttpClientFactory factory)
     {
@@ -60,6 +61,9 @@ public sealed class SignalingService : ISignalingService
 
         _hub.On<Guid>(SignalingEvents.SessionRejected, sessionId =>
             SessionRejected?.Invoke(this, sessionId));
+
+        _hub.On<Guid>(SignalingEvents.SessionEnded, sessionId =>
+            SessionEnded?.Invoke(this, sessionId));
 
         await _hub.StartAsync(ct);
     }

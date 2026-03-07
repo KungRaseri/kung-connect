@@ -27,4 +27,5 @@ public interface ISignalingService : IAsyncDisposable
     event EventHandler<SessionStateMessage>? SessionStateChanged;
     event EventHandler<Guid>? SessionApproved;
     event EventHandler<Guid>? SessionRejected;
+    event EventHandler<Guid>? SessionEnded;
 }
