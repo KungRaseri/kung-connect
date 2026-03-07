@@ -41,6 +41,7 @@ public sealed class AgentInstallerService(
         logger.LogInformation("AgentInstaller: starting unattended update from {Url}", downloadUrl);
 
         var tempFile = Path.Combine(Path.GetTempPath(), Path.GetFileName(downloadUrl));
+        var msiLaunched = false; // true when msiexec is running detached and still has the file open
 
         try
         {
@@ -75,8 +76,14 @@ public sealed class AgentInstallerService(
                     ?? throw new InvalidOperationException("Failed to start msiexec.");
 
                 logger.LogInformation(
-                    "AgentInstaller: msiexec launched (pid {Pid}). Stopping service — SCM will restart with new binary.",
+                    "AgentInstaller: msiexec launched (pid {Pid}). Stopping service — MSI will restart it when done.",
                     proc.Id);
+
+                // Signal the finally block NOT to delete the temp file — msiexec is still reading it.
+                // (The finally runs almost immediately after return, before msiexec has had time to
+                // open the file, so an unconditional delete would silently kill the install.)
+                // The file sits in the system temp folder and will be cleaned up eventually.
+                msiLaunched = true;
 
                 lifetime.StopApplication();
                 return;
@@ -124,8 +131,10 @@ public sealed class AgentInstallerService(
         }
         finally
         {
-            // Best-effort cleanup — the MSI/deb/pkg may still be locked by the installer.
-            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
+            // Skip cleanup when msiexec was launched detached — it still has the file open.
+            // Any other failure path (download error, non-Windows) should clean up.
+            if (!msiLaunched)
+                try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
         }
     }
 
